@@ -48,3 +48,5 @@ npm run dev
 Thx @grena for the Game Jam org!
 
 Thx @wlk for the following boilerplate https://github.com/wlk/phaser-typescript-boilerplate
+
+Thx Daniel Cook for the remastered Art Work of Tyrian http://www.lostgarden.com/2007/04/free-game-graphics-tyrian-ships-and.html
