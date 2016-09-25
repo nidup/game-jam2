@@ -2,11 +2,9 @@
 
 class SimpleGame {
     private game: Phaser.Game;
-    private map: Phaser.Tilemap;
-    private cursors: Phaser.CursorKeys;
     private configuration: Configuration;
     private ship: PlayerShip;
-    private starfield: Phaser.TileSprite;
+    private ground: Ground;
 
     constructor(config: Configuration) {
         this.configuration = config;
@@ -26,40 +24,33 @@ class SimpleGame {
     }
 
     public create() {
-        this.cursors = this.game.input.keyboard.createCursorKeys();
-
         this.createWorld();
-        //this.createGround();
     }
 
     public update() {
         this.ship.move();
-
-        // TODO
-        if (!this.game.camera.atLimit.x) {
-            this.starfield.tilePosition.x -= (this.ship.sprite.body.velocity.x * this.game.time.physicsElapsed);
-        }
-
-        if (!this.game.camera.atLimit.y) {
-            this.starfield.tilePosition.y -= (this.ship.sprite.body.velocity.y * this.game.time.physicsElapsed);
-        }
+        this.ground.update();
     }
 
     private createWorld() {
+
+        let cursors = this.game.input.keyboard.createCursorKeys();
+
         this.game.world.setBounds(0, 0, this.configuration.getWorldWidth(), this.configuration.getWorldHeight());
 
         this.game.physics.startSystem(Phaser.Physics.P2JS);
         this.game.physics.p2.restitution = 0.8;
 
-        this.starfield = this.game.add.tileSprite(0, 0, 800, 600, "stars");
-        this.starfield.fixedToCamera = true;
+        let starfield = this.game.add.tileSprite(0, 0, 800, 600, "stars");
+        starfield.fixedToCamera = true;
 
-        let sprite = this.game.add.sprite(200, 200, "ship");
-        this.game.physics.p2.enable(sprite);
-        this.game.camera.follow(sprite);
-        this.ship = new PlayerShip(sprite, this.cursors);
+        let playerSprite = this.game.add.sprite(200, 200, "ship");
+        this.game.physics.p2.enable(playerSprite);
+        this.game.camera.follow(playerSprite);
+        this.ship = new PlayerShip(playerSprite, cursors);
+
+        this.ground = new Ground(playerSprite, starfield, this.game.camera, this.game.time);
     }
-
 }
 
 interface IShip {
@@ -67,7 +58,7 @@ interface IShip {
 }
 
 class PlayerShip implements IShip {
-    public sprite: Phaser.Sprite; // TODO: public for camera :(
+    private sprite: Phaser.Sprite;
     private cursors: Phaser.CursorKeys;
     private controller: VelocityController;
 
@@ -113,6 +104,30 @@ class VelocityController {
             vy = Math.sin(angle) * maxVelocity;
             body.data.velocity[0] = vx;
             body.data.velocity[1] = vy;
+        }
+    }
+}
+
+class Ground {
+    private playerSprite: Phaser.Sprite;
+    private backgroundSprite: Phaser.TileSprite;
+    private camera: Phaser.Camera;
+    private time: Phaser.Time;
+
+    constructor (playerSprite: Phaser.Sprite, groundSprite: Phaser.TileSprite, camera: Phaser.Camera, time: Phaser.Time) {
+        this.playerSprite = playerSprite;
+        this.backgroundSprite = groundSprite;
+        this.camera = camera;
+        this.time = time;
+    }
+
+    public update() {
+        if (!this.camera.atLimit.x) {
+            this.backgroundSprite.tilePosition.x -= (this.playerSprite.body.velocity.x * this.time.physicsElapsed);
+        }
+
+        if (!this.camera.atLimit.y) {
+            this.backgroundSprite.tilePosition.y -= (this.playerSprite.body.velocity.y * this.time.physicsElapsed);
         }
     }
 }
