@@ -1,14 +1,12 @@
 /// <reference path="../lib/phaser.d.ts"/>
 
-//import { Configuration } from "./configuration";
-
 class SimpleGame {
     private game: Phaser.Game;
-    private logo: Phaser.Sprite;
+    private map: Phaser.Tilemap;
     private cursors: Phaser.CursorKeys;
     private configuration: Configuration;
     private ship: Phaser.Sprite;
-    private starfield: Phaser.Sprite;
+    private starfield: Phaser.TileSprite;
 
     constructor(config: Configuration) {
         this.configuration = config;
@@ -22,6 +20,7 @@ class SimpleGame {
     }
 
     public preload() {
+        this.game.load.image("tileset", "assets/tileset.png");
         this.game.load.image("stars", "assets/starfield.jpg");
         this.game.load.image("ship", "assets/thrust_ship2.png");
     }
@@ -30,6 +29,7 @@ class SimpleGame {
         this.cursors = this.game.input.keyboard.createCursorKeys();
 
         this.createWorld();
+        //this.createGround();
     }
 
     public update() {
@@ -57,14 +57,10 @@ class SimpleGame {
     }
 
     private createWorld() {
-        /*this.game.physics.startSystem(Phaser.Physics.ARCADE);
-        this.game.world.setBounds(0, 0, this.configuration.getWorldWidth(), this.configuration.getWorldHeight());*/
-
-
         this.game.world.setBounds(0, 0, this.configuration.getWorldWidth(), this.configuration.getWorldHeight());
 
         this.game.physics.startSystem(Phaser.Physics.P2JS);
-        this.game.physics.p2.defaultRestitution = 0.8;
+        this.game.physics.p2.restitution = 0.8;
 
         this.starfield = this.game.add.tileSprite(0, 0, 800, 600, "stars");
         this.starfield.fixedToCamera = true;
