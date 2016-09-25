@@ -4,7 +4,7 @@ class SimpleGame {
     private game: Phaser.Game;
     private configuration: Configuration;
     private ship: PlayerShip;
-    private ground: Ground;
+    //private ground: Ground;
 
     constructor(config: Configuration) {
         this.configuration = config;
@@ -29,7 +29,7 @@ class SimpleGame {
 
     public update() {
         this.ship.move();
-        this.ground.update();
+        //this.ground.update();
     }
 
     private createWorld() {
@@ -41,15 +41,21 @@ class SimpleGame {
         this.game.physics.startSystem(Phaser.Physics.P2JS);
         this.game.physics.p2.restitution = 0.8;
 
-        let starfield = this.game.add.tileSprite(0, 0, 800, 600, "stars");
-        starfield.fixedToCamera = true;
+        let map = this.game.add.tilemap();
+        let generator = new TilemapGenerator();
+        generator.generate(this.game.rnd, map, this.configuration);
+
+        //let starfield = this.game.add.tileSprite(0, 0, 800, 600, "stars");
+        //starfield.fixedToCamera = true;
 
         let playerSprite = this.game.add.sprite(200, 200, "ship");
+        playerSprite.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
         this.game.physics.p2.enable(playerSprite);
         this.game.camera.follow(playerSprite);
         this.ship = new PlayerShip(playerSprite, cursors);
 
-        this.ground = new Ground(playerSprite, starfield, this.game.camera, this.game.time);
+        //this.ground = new Ground(playerSprite, starfield, this.game.camera, this.game.time);
+
     }
 }
 
@@ -108,6 +114,115 @@ class VelocityController {
     }
 }
 
+class TilemapGenerator {
+    public generate (rand: Phaser.RandomDataGenerator, map: Phaser.Tilemap, configuration: Configuration) {
+        map.addTilesetImage(
+            "tileset",
+            "tileset",
+            configuration.getTileWidth(),
+            configuration.getTileHeight()
+        );
+        let layer = map.create(
+            "ground",
+            configuration.getMapWidthInTiles(),
+            configuration.getMapHeightInTiles(),
+            configuration.getTileWidth(),
+            configuration.getTileHeight()
+        );
+        layer.scale.setTo(configuration.getPixelRatio(), configuration.getPixelRatio());
+
+        let generator = new CellularAutomataMapGenerator();
+        let terrain = generator.generate(configuration.getMapWidthInTiles(), configuration.getMapHeightInTiles());
+
+        for (let row = 0; row < terrain.length; row++) {
+            for (let column = 0; column < terrain[row].length; column++) {
+                let tileIndex = 6;
+                if (terrain[row][column] === false) {
+                    tileIndex = 6+15*3;
+                }
+                map.putTile(tileIndex, row, column, layer);
+            }
+        }
+    }
+}
+
+/**
+ * Procedural boolean map generator using cellular automata
+ * @see https://gamedevelopment.tutsplus.com/tutorials/generate-random-cave-levels-using-cellular-automata--gamedev-9664
+ * @see http://fiddle.jshell.net/neuroflux/qpnf32fu/
+ */
+class CellularAutomataMapGenerator {
+    public generate(width: number, height: number) {
+        let chanceToStartAlive = 0.4;
+        let numberOfSteps = 2;
+        let deathLimit = 3;
+        let birthLimit = 4;
+        let map = this.initialize(width, height, chanceToStartAlive);
+        for (let i = 0; i < numberOfSteps; i++) {
+            map = this.doSimulationStep(map, deathLimit, birthLimit);
+        }
+
+        return map;
+    }
+
+    private initialize(width: number, height: number, chanceToStartAlive: number) {
+        let map = [[]];
+        for (let x = 0; x < width; x++) {
+            map[x] = [];
+            for (let y = 0; y < height; y++) {
+                if (Math.random() < chanceToStartAlive) {
+                    map[x][y] = true;
+                } else {
+                    map[x][y] = false;
+                }
+            }
+        }
+
+        return map;
+    }
+
+    private doSimulationStep (map: Array<Array<boolean>>, deathLimit: number, birthLimit: number) {
+        let newMap = [[]];
+        for (let x = 0; x < map.length; x++) {
+            newMap[x] = [];
+            for (let y = 0; y < map[0].length; y++) {
+                let nbs = this.countAliveNeighbours(map, x, y);
+                if (map[x][y] === true) {
+                    if (nbs < deathLimit) {
+                        newMap[x][y] = false;
+                    } else {
+                        newMap[x][y] = true;
+                    }
+                } else {
+                    if (nbs > birthLimit) {
+                        newMap[x][y] = true;
+                    } else {
+                        newMap[x][y] = false;
+                    }
+                }
+            }
+        }
+
+        return newMap;
+    }
+
+    private countAliveNeighbours(map: Array<Array<boolean>>, x, y) {
+        let count = 0;
+        for (let i = -1; i < 2; i++) {
+            for (let j = -1; j < 2; j++) {
+                let nbX = i + x;
+                let nbY = j + y;
+                if (nbX < 0 || nbY < 0 || nbX >= map.length || nbY >= map[0].length) {
+                    count = count + 1;
+                } else if (map[nbX][nbY] === true) {
+                    count = count + 1;
+                }
+            }
+        }
+        return count;
+    }
+}
+
 class Ground {
     private playerSprite: Phaser.Sprite;
     private backgroundSprite: Phaser.TileSprite;
@@ -151,6 +266,22 @@ class Configuration {
 
     public getWorldHeight() {
         return 100000;
+    }
+
+    public getTileWidth() {
+        return 24;
+    }
+
+    public getTileHeight() {
+        return 28;
+    }
+
+    public getMapWidthInTiles() {
+        return 50;
+    }
+
+    public getMapHeightInTiles() {
+        return 50;
     }
 
     public getPixelRatio() {
