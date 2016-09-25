@@ -4,7 +4,6 @@ class SimpleGame {
     private game: Phaser.Game;
     private configuration: Configuration;
     private ship: PlayerShip;
-    //private ground: Ground;
 
     constructor(config: Configuration) {
         this.configuration = config;
@@ -29,7 +28,6 @@ class SimpleGame {
 
     public update() {
         this.ship.move();
-        //this.ground.update();
     }
 
     private createWorld() {
@@ -45,17 +43,11 @@ class SimpleGame {
         let generator = new TilemapGenerator();
         generator.generate(this.game.rnd, map, this.configuration);
 
-        //let starfield = this.game.add.tileSprite(0, 0, 800, 600, "stars");
-        //starfield.fixedToCamera = true;
-
         let playerSprite = this.game.add.sprite(200, 200, "ship");
         playerSprite.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
         this.game.physics.p2.enable(playerSprite);
         this.game.camera.follow(playerSprite);
         this.ship = new PlayerShip(playerSprite, cursors);
-
-        //this.ground = new Ground(playerSprite, starfield, this.game.camera, this.game.time);
-
     }
 }
 
@@ -145,9 +137,9 @@ class TilemapGenerator {
 }
 
 /**
- * Generates a map of numbers representing tile indexes
+ * Generates a map of numbers representing tile indexes in the sprite
  *
- * Thx Chmood for https://github.com/Chmood/shmup/blob/gh-pages/src/js/game.js
+ * Huge Thx to Chmood who inspirates this generator here https://github.com/Chmood/shmup/blob/gh-pages/src/js/game.js
  */
 class TerrainTileMapGenerator {
 
@@ -155,114 +147,194 @@ class TerrainTileMapGenerator {
     public SAND: number = 6 + 15 * 1;
     public WATER: number = 6 + 15 * 2;
     public DEEP_WATER: number = 6 + 15 * 3;
-    public TILE_STACK: Array<number> = [/*this.FORREST,*/ this.SAND, this.WATER/*, this.DEEP_WATER*/];
+    public TILE_STACK: Array<number> = [this.FORREST, this.SAND, this.WATER, this.DEEP_WATER];
 
-    public generate(cells: Array<Array<boolean>>) {
-        let tiles = this.initializeWithWaterAndSand(cells);
+    /**
+     * Generates the tiles, the tile number is related to the index in the tile sprite
+     * @param cells
+     * @returns {Array[]}
+     */
+    public generate(cells: Array<Array<number>>) {
+        let tiles = this.initializeWithBaseTiles(cells);
         tiles = this.smoothTiles(tiles);
+        tiles = this.roundTiles(tiles);
 
         return tiles;
     }
 
-    private initializeWithWaterAndSand(cells: Array<Array<boolean>>) {
+    /**
+     * Set up the tile map with base tiles, aka, forrest, sand, water, deep water
+     * @param cells
+     * @returns {Array[]}
+     */
+    private initializeWithBaseTiles(cells: Array<Array<number>>) {
         let tiles = [[]];
         for (let row = 0; row < cells.length; row++) {
             tiles[row] = [];
             for (let column = 0; column < cells[row].length; column++) {
-                let tileIndex = this.WATER;
-                if (cells[row][column] === false) {
-                    tileIndex = this.SAND;
-                }
-                tiles[row][column] = tileIndex;
+                tiles[row][column] = this.TILE_STACK[cells[row][column]];
             }
         }
 
         return tiles;
     }
 
+    /**
+     * Erase difference between tile layer, for instance, it means that forrest can touch sand but not water, sand can
+     * touch water but not deep water, etc
+     *
+     * @param tiles
+     * @returns {Array<Array<number>>}
+     */
     private smoothTiles(tiles: Array<Array<number>>) {
-        let smoothedTiles = [[]];
+        for (let n = 0; n < this.TILE_STACK.length - 1; n++) {
+
+            let tileCurrent = this.TILE_STACK[n];
+            let tileAbove = (n > 0) ? this.TILE_STACK[n - 1] :  -1;
+            let tileBelow =  this.TILE_STACK[n + 1];
+
+            for (let i = 0; i < tiles.length ; i++) {
+                for (let j = 0; j < tiles[i].length; j++) {
+                    if (tiles[i][j] === tileCurrent) {
+
+                        // Left up
+                        if (i > 0 && j > 0 && tiles[i - 1][j - 1] !== tileCurrent && tiles[i - 1][j - 1] !== tileAbove && tiles[i - 1][j - 1] !== tileBelow) {
+                            tiles[i - 1][j - 1] = tileBelow;
+                        }
+                        // Mid up
+                        if (j > 0 && tiles[i][j - 1] !== tileCurrent && tiles[i][j - 1] !== tileAbove && tiles[i][j - 1] !== tileBelow) {
+                            tiles[i][j - 1] = tileBelow;
+                        }
+                        // Right up
+                        if (i < tiles.length - 1 && j > 0 && tiles[i + 1][j - 1] !== tileCurrent && tiles[i + 1][j - 1] !== tileAbove && tiles[i + 1][j - 1] !== tileBelow) {
+                            tiles[i + 1][j - 1] = tileBelow;
+                        }
+                        // Right mid
+                        if (i < tiles.length - 1 && tiles[i + 1][j] !== tileCurrent && tiles[i + 1][j] !== tileAbove && tiles[i + 1][j] !== tileBelow) {
+                            tiles[i + 1][j] = tileBelow;
+                        }
+                        // Right down
+                        if (i < tiles.length - 1 && j < tiles[i].length - 1 && tiles[i + 1][j + 1] !== tileCurrent && tiles[i + 1][j + 1] !== tileAbove && tiles[i + 1][j + 1] !== tileBelow) {
+                            tiles[i + 1][j + 1] = tileBelow;
+                        }
+                        // Mid down
+                        if (j < tiles[i].length - 1 && tiles[i][j + 1] !== tileCurrent && tiles[i][j + 1] !== tileAbove && tiles[i][j + 1] !== tileBelow) {
+                            tiles[i][j + 1] = tileBelow;
+                        }
+                        // Left down
+                        if (i > 0 && j < tiles[i].length - 1 && tiles[i - 1][j + 1] !== tileCurrent && tiles[i - 1][j + 1] !== tileAbove && tiles[i - 1][j + 1] !== tileBelow) {
+                            tiles[i - 1][j + 1] = tileBelow;
+                        }
+                        // Left mid
+                        if (i > 0 && tiles[i - 1][j] !== tileCurrent && tiles[i - 1][j] !== tileAbove && tiles[i - 1][j] !== tileBelow) {
+                            tiles[i - 1][j] = tileBelow;
+                        }
+                    }
+                }
+            }
+        }
+
+        return tiles;
+    }
+
+    /**
+     * Detect ground differences and corners to replace base tiles by rounded tiles
+     * @param tiles
+     * @returns {Array}
+     */
+    private roundTiles(tiles: Array<Array<number>>) {
+
+        let roundedTiles = [];
+        for (let i = 0; i < tiles.length - 1; i++) {
+            roundedTiles[i] = [];
+        }
 
         for (let n = 1; n < this.TILE_STACK.length; n++) {
             let currentLayer = this.TILE_STACK[n];
             let upperLayer = this.TILE_STACK[n - 1];
 
             for (let i = 0; i < tiles.length - 1; i++) {
-                smoothedTiles[i] = [];
                 for (let j = 0; j < tiles[i].length - 1; j++) {
-
                     let q = [[tiles[i][j], tiles[i + 1][j]], [tiles[i][j + 1], tiles[i + 1][j + 1]]];
 
                     // 4 corners
                     if (q.join() === [[upperLayer, upperLayer], [upperLayer, upperLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 6;
+                        roundedTiles[i][j] = (n - 1) * 15 + 6;
 
                     // 3 corners
                     } else if (q.join() === [[upperLayer, upperLayer], [upperLayer, currentLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 9;
+                        roundedTiles[i][j] = (n - 1) * 15 + 9;
 
                     } else if (q.join() === [[upperLayer, upperLayer], [currentLayer, upperLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 8;
+                        roundedTiles[i][j] = (n - 1) * 15 + 8;
 
                     } else if (q.join() === [[currentLayer, upperLayer], [upperLayer, upperLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 3;
+                        roundedTiles[i][j] = (n - 1) * 15 + 3;
 
                     } else if (q.join() === [[upperLayer, currentLayer], [upperLayer, upperLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 4;
+                        roundedTiles[i][j] = (n - 1) * 15 + 4;
 
                     // 2 corners
                     } else if (q.join() === [[upperLayer, upperLayer], [currentLayer, currentLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 11;
+                        roundedTiles[i][j] = (n - 1) * 15 + 11;
 
                     } else if (q.join() === [[currentLayer, upperLayer], [currentLayer, upperLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 5;
+                        roundedTiles[i][j] = (n - 1) * 15 + 5;
 
                     } else if (q.join() === [[currentLayer, currentLayer], [upperLayer, upperLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 1;
+                        roundedTiles[i][j] = (n - 1) * 15 + 1;
 
                     } else if (q.join() === [[upperLayer, currentLayer], [upperLayer, currentLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 7;
+                        roundedTiles[i][j] = (n - 1) * 15 + 7;
 
                     } else if (q.join() === [[currentLayer, upperLayer], [upperLayer, currentLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 14;
+                        roundedTiles[i][j] = (n - 1) * 15 + 14;
 
                     } else if (q.join() === [[upperLayer, currentLayer], [currentLayer, upperLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 13;
+                        roundedTiles[i][j] = (n - 1) * 15 + 13;
 
                     // 1 corner
                     } else if (q.join() === [[upperLayer, currentLayer], [currentLayer, currentLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 12;
+                        roundedTiles[i][j] = (n - 1) * 15 + 12;
 
                     } else if (q.join() === [[currentLayer, upperLayer], [currentLayer, currentLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 10;
+                        roundedTiles[i][j] = (n - 1) * 15 + 10;
 
                     } else if (q.join() === [[currentLayer, currentLayer], [currentLayer, upperLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 0;
+                        roundedTiles[i][j] = (n - 1) * 15 + 0;
 
                     } else if (q.join() === [[currentLayer, currentLayer], [upperLayer, currentLayer]].join()) {
-                        smoothedTiles[i][j] = (n - 1) * 15 + 2;
+                        roundedTiles[i][j] = (n - 1) * 15 + 2;
 
                     // no corner
                     } else if (q.join() === [[currentLayer, currentLayer], [currentLayer, currentLayer]].join()) {
-                        smoothedTiles[i][j] = n * 15 + 6;
+                        roundedTiles[i][j] = n * 15 + 6;
                     }
                 }
             }
         }
 
-        return smoothedTiles;
+        return roundedTiles;
     }
 }
 
 /**
- * Procedural boolean map generator using cellular automata
+ * Procedural map generator using cellular automata
+ *
+ * @see https://en.wikipedia.org/wiki/Cellular_automaton
  * @see https://gamedevelopment.tutsplus.com/tutorials/generate-random-cave-levels-using-cellular-automata--gamedev-9664
  * @see http://fiddle.jshell.net/neuroflux/qpnf32fu/
  */
 class CellularAutomataMapGenerator {
+
+    public STATE_DEATH: number = 0;
+    public STATE_ALIVE_ONE: number = 1;
+    public STATE_ALIVE_TWO: number = 2;
+    public STATE_ALIVE_THREE: number = 3;
+
     public generate(width: number, height: number) {
         let chanceToStartAlive = 0.4;
-        let numberOfSteps = 2;
+        let numberOfSteps = 3;
         let deathLimit = 3;
         let birthLimit = 4;
         let cells = this.initialize(width, height, chanceToStartAlive);
@@ -279,9 +351,10 @@ class CellularAutomataMapGenerator {
             cells[x] = [];
             for (let y = 0; y < height; y++) {
                 if (Math.random() < chanceToStartAlive) {
-                    cells[x][y] = true;
+                    cells[x][y] = (Math.random() < 0.3) ?
+                        this.STATE_ALIVE_ONE : (Math.random() < 0.5) ? this.STATE_ALIVE_TWO : this.STATE_ALIVE_THREE;
                 } else {
-                    cells[x][y] = false;
+                    cells[x][y] = this.STATE_DEATH;
                 }
             }
         }
@@ -289,23 +362,23 @@ class CellularAutomataMapGenerator {
         return cells;
     }
 
-    private doSimulationStep (cells: Array<Array<boolean>>, deathLimit: number, birthLimit: number) {
+    private doSimulationStep (cells: Array<Array<number>>, deathLimit: number, birthLimit: number) {
         let newCells = [[]];
         for (let x = 0; x < cells.length; x++) {
             newCells[x] = [];
             for (let y = 0; y < cells[0].length; y++) {
                 let nbs = this.countAliveNeighbours(cells, x, y);
-                if (cells[x][y] === true) {
+                if (cells[x][y] > this.STATE_DEATH) {
                     if (nbs < deathLimit) {
-                        newCells[x][y] = false;
+                        newCells[x][y] = this.STATE_DEATH;
                     } else {
-                        newCells[x][y] = true;
+                        newCells[x][y] = this.getDominantNeighbourActiveState(cells, x, y);
                     }
                 } else {
                     if (nbs > birthLimit) {
-                        newCells[x][y] = true;
+                        newCells[x][y] = this.getDominantNeighbourActiveState(cells, x, y);
                     } else {
-                        newCells[x][y] = false;
+                        newCells[x][y] = this.STATE_DEATH;
                     }
                 }
             }
@@ -314,7 +387,7 @@ class CellularAutomataMapGenerator {
         return newCells;
     }
 
-    private countAliveNeighbours(cells: Array<Array<boolean>>, x, y) {
+    private countAliveNeighbours(cells: Array<Array<number>>, x, y) {
         let count = 0;
         for (let i = -1; i < 2; i++) {
             for (let j = -1; j < 2; j++) {
@@ -322,35 +395,42 @@ class CellularAutomataMapGenerator {
                 let nbY = j + y;
                 if (nbX < 0 || nbY < 0 || nbX >= cells.length || nbY >= cells[0].length) {
                     count = count + 1;
-                } else if (cells[nbX][nbY] === true) {
+                } else if (cells[nbX][nbY] > this.STATE_DEATH) {
                     count = count + 1;
                 }
             }
         }
+
         return count;
     }
-}
 
-class Ground {
-    private playerSprite: Phaser.Sprite;
-    private backgroundSprite: Phaser.TileSprite;
-    private camera: Phaser.Camera;
-    private time: Phaser.Time;
+    private getDominantNeighbourActiveState(cells: Array<Array<number>>, x, y) {
+        let counterAliveOne = 0;
+        let counterAliveTwo = 0;
+        let counterAliveThree = 0;
 
-    constructor (playerSprite: Phaser.Sprite, groundSprite: Phaser.TileSprite, camera: Phaser.Camera, time: Phaser.Time) {
-        this.playerSprite = playerSprite;
-        this.backgroundSprite = groundSprite;
-        this.camera = camera;
-        this.time = time;
-    }
-
-    public update() {
-        if (!this.camera.atLimit.x) {
-            this.backgroundSprite.tilePosition.x -= (this.playerSprite.body.velocity.x * this.time.physicsElapsed);
+        for (let i = -1; i < 2; i++) {
+            for (let j = -1; j < 2; j++) {
+                let nbX = i + x;
+                let nbY = j + y;
+                if (nbX < 0 || nbY < 0 || nbX >= cells.length || nbY >= cells[0].length) {
+                    continue;
+                } else if (cells[nbX][nbY] === this.STATE_ALIVE_ONE) {
+                    counterAliveOne = counterAliveOne + 1;
+                } else if (cells[nbX][nbY] === this.STATE_ALIVE_TWO) {
+                    counterAliveTwo = counterAliveTwo + 1;
+                } else if (cells[nbX][nbY] === this.STATE_ALIVE_THREE) {
+                    counterAliveThree = counterAliveThree + 1;
+                }
+            }
         }
 
-        if (!this.camera.atLimit.y) {
-            this.backgroundSprite.tilePosition.y -= (this.playerSprite.body.velocity.y * this.time.physicsElapsed);
+        if (counterAliveOne > counterAliveTwo && counterAliveOne > counterAliveThree) {
+            return this.STATE_ALIVE_THREE;
+        } else if (counterAliveTwo > counterAliveOne && counterAliveTwo > counterAliveThree) {
+            return this.STATE_ALIVE_TWO;
+        } else {
+            return this.STATE_ALIVE_THREE;
         }
     }
 }
