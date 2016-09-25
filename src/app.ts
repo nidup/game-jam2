@@ -5,7 +5,7 @@ class SimpleGame {
     private map: Phaser.Tilemap;
     private cursors: Phaser.CursorKeys;
     private configuration: Configuration;
-    private ship: Phaser.Sprite;
+    private ship: PlayerShip;
     private starfield: Phaser.TileSprite;
 
     constructor(config: Configuration) {
@@ -33,26 +33,15 @@ class SimpleGame {
     }
 
     public update() {
-        if (this.cursors.left.isDown) {
-            this.ship.body.rotateLeft(100);
-        } else if (this.cursors.right.isDown) {
-            this.ship.body.rotateRight(100);
-        } else {
-            this.ship.body.setZeroRotation();
-        }
+        this.ship.move();
 
-        if (this.cursors.up.isDown) {
-            this.ship.body.thrust(400);
-        } else if (this.cursors.down.isDown) {
-            this.ship.body.reverse(400);
-        }
-
+        // TODO
         if (!this.game.camera.atLimit.x) {
-            this.starfield.tilePosition.x -= (this.ship.body.velocity.x * this.game.time.physicsElapsed);
+            this.starfield.tilePosition.x -= (this.ship.sprite.body.velocity.x * this.game.time.physicsElapsed);
         }
 
         if (!this.game.camera.atLimit.y) {
-            this.starfield.tilePosition.y -= (this.ship.body.velocity.y * this.game.time.physicsElapsed);
+            this.starfield.tilePosition.y -= (this.ship.sprite.body.velocity.y * this.game.time.physicsElapsed);
         }
     }
 
@@ -65,22 +54,80 @@ class SimpleGame {
         this.starfield = this.game.add.tileSprite(0, 0, 800, 600, "stars");
         this.starfield.fixedToCamera = true;
 
-        this.ship = this.game.add.sprite(200, 200, "ship");
-        this.game.physics.p2.enable(this.ship);
-        this.game.camera.follow(this.ship);
+        let sprite = this.game.add.sprite(200, 200, "ship");
+        this.game.physics.p2.enable(sprite);
+        this.game.camera.follow(sprite);
+        this.ship = new PlayerShip(sprite, this.cursors);
+    }
 
-        //cursors = game.input.keyboard.createCursorKeys();
+}
+
+interface IShip {
+    move();
+}
+
+class PlayerShip implements IShip {
+    public sprite: Phaser.Sprite; // TODO: public for camera :(
+    private cursors: Phaser.CursorKeys;
+    private controller: VelocityController;
+
+    constructor (sprite: Phaser.Sprite, cursors: Phaser.CursorKeys) {
+        this.sprite = sprite;
+        this.cursors = cursors;
+        this.controller = new VelocityController();
+    }
+
+    public move () {
+        if (this.cursors.left.isDown) {
+            this.sprite.body.rotateLeft(100);
+        } else if (this.cursors.right.isDown) {
+            this.sprite.body.rotateRight(100);
+        } else {
+            this.sprite.body.setZeroRotation();
+        }
+
+        if (this.cursors.up.isDown) {
+            this.sprite.body.thrust(400);
+        } else if (this.cursors.down.isDown) {
+            this.sprite.body.reverse(100);
+        }
+
+        this.controller.limitVelocity(this.sprite, 15);
     }
 }
 
+/**
+ * Controls and limits the velocity of a sprite
+ * @see http://www.html5gamedevs.com/topic/4723-p2-physics-limit-the-speed-of-a-sprite/
+ */
+class VelocityController {
+    public limitVelocity(sprite: Phaser.Sprite, maxVelocity: number) {
+        let body = sprite.body
+        let angle, currVelocitySqr, vx, vy;
+        vx = body.data.velocity[0];
+        vy = body.data.velocity[1];
+        currVelocitySqr = vx * vx + vy * vy;
+        if (currVelocitySqr > maxVelocity * maxVelocity) {
+            angle = Math.atan2(vy, vx);
+            vx = Math.cos(angle) * maxVelocity;
+            vy = Math.sin(angle) * maxVelocity;
+            body.data.velocity[0] = vx;
+            body.data.velocity[1] = vy;
+        }
+    }
+}
+
+/**
+ * Global configuration for the game
+ */
 class Configuration {
 
     public getGameWidth() {
-        return 200;
+        return 500;
     }
 
     public getGameHeight() {
-        return 200;
+        return 500;
     }
 
     public getWorldWidth() {
