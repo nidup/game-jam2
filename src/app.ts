@@ -18,7 +18,8 @@ class SimpleGame {
     }
 
     public preload() {
-        this.game.load.image("tileset", "assets/tileset.png");
+        //this.game.load.image("tileset", "assets/tileset.png");
+        this.game.load.image("tileset", "assets/tileset_debug.png");
         this.game.load.image("stars", "assets/starfield.jpg");
         this.game.load.image("ship", "assets/thrust_ship2.png");
     }
@@ -100,12 +101,11 @@ class PlayerShip implements IShip {
 class VelocityController {
     public limitVelocity(sprite: Phaser.Sprite, maxVelocity: number) {
         let body = sprite.body
-        let angle, currVelocitySqr, vx, vy;
-        vx = body.data.velocity[0];
-        vy = body.data.velocity[1];
-        currVelocitySqr = vx * vx + vy * vy;
+        let vx = body.data.velocity[0];
+        let vy = body.data.velocity[1];
+        let currVelocitySqr = vx * vx + vy * vy;
+        let angle = Math.atan2(vy, vx);
         if (currVelocitySqr > maxVelocity * maxVelocity) {
-            angle = Math.atan2(vy, vx);
             vx = Math.cos(angle) * maxVelocity;
             vy = Math.sin(angle) * maxVelocity;
             body.data.velocity[0] = vx;
@@ -131,18 +131,48 @@ class TilemapGenerator {
         );
         layer.scale.setTo(configuration.getPixelRatio(), configuration.getPixelRatio());
 
-        let generator = new CellularAutomataMapGenerator();
-        let terrain = generator.generate(configuration.getMapWidthInTiles(), configuration.getMapHeightInTiles());
+        let cellularGenerator = new CellularAutomataMapGenerator();
+        let cells = cellularGenerator.generate(configuration.getMapWidthInTiles(), configuration.getMapHeightInTiles());
 
-        for (let row = 0; row < terrain.length; row++) {
-            for (let column = 0; column < terrain[row].length; column++) {
-                let tileIndex = 6;
-                if (terrain[row][column] === false) {
-                    tileIndex = 6+15*3;
-                }
-                map.putTile(tileIndex, row, column, layer);
+        let tilesGenerator = new TerrainTileMapGenerator();
+        let tiles = tilesGenerator.generate(cells);
+
+        /*
+         var TILE = {
+         FORREST: 		6,
+         EARTH: 			6 + 15 * 1,
+         WATER: 			6 + 15 * 2,
+         DEEPWATER: 	6 + 15 * 3
+         };
+         */
+
+        for (let row = 0; row < tiles.length; row++) {
+            for (let column = 0; column < tiles[row].length; column++) {
+                map.putTile(tiles[row][column], row, column, layer);
             }
         }
+    }
+}
+
+/**
+ * Generates a map of numbers representing tile indexes
+ */
+class TerrainTileMapGenerator {
+
+    public generate(cells: Array<Array<boolean>>) {
+        let tiles = [[]];
+        for (let row = 0; row < cells.length; row++) {
+            tiles[row] = [];
+            for (let column = 0; column < cells[row].length; column++) {
+                let tileIndex = 6 + 15 * 2;
+                if (cells[row][column] === false) {
+                    tileIndex = 6 + 15 * 1;
+                }
+                tiles[row][column] = tileIndex;
+            }
+        }
+
+        return tiles;
     }
 }
 
@@ -157,64 +187,64 @@ class CellularAutomataMapGenerator {
         let numberOfSteps = 2;
         let deathLimit = 3;
         let birthLimit = 4;
-        let map = this.initialize(width, height, chanceToStartAlive);
+        let cells = this.initialize(width, height, chanceToStartAlive);
         for (let i = 0; i < numberOfSteps; i++) {
-            map = this.doSimulationStep(map, deathLimit, birthLimit);
+            cells = this.doSimulationStep(cells, deathLimit, birthLimit);
         }
 
-        return map;
+        return cells;
     }
 
     private initialize(width: number, height: number, chanceToStartAlive: number) {
-        let map = [[]];
+        let cells = [[]];
         for (let x = 0; x < width; x++) {
-            map[x] = [];
+            cells[x] = [];
             for (let y = 0; y < height; y++) {
                 if (Math.random() < chanceToStartAlive) {
-                    map[x][y] = true;
+                    cells[x][y] = true;
                 } else {
-                    map[x][y] = false;
+                    cells[x][y] = false;
                 }
             }
         }
 
-        return map;
+        return cells;
     }
 
-    private doSimulationStep (map: Array<Array<boolean>>, deathLimit: number, birthLimit: number) {
-        let newMap = [[]];
-        for (let x = 0; x < map.length; x++) {
-            newMap[x] = [];
-            for (let y = 0; y < map[0].length; y++) {
-                let nbs = this.countAliveNeighbours(map, x, y);
-                if (map[x][y] === true) {
+    private doSimulationStep (cells: Array<Array<boolean>>, deathLimit: number, birthLimit: number) {
+        let newCells = [[]];
+        for (let x = 0; x < cells.length; x++) {
+            newCells[x] = [];
+            for (let y = 0; y < cells[0].length; y++) {
+                let nbs = this.countAliveNeighbours(cells, x, y);
+                if (cells[x][y] === true) {
                     if (nbs < deathLimit) {
-                        newMap[x][y] = false;
+                        newCells[x][y] = false;
                     } else {
-                        newMap[x][y] = true;
+                        newCells[x][y] = true;
                     }
                 } else {
                     if (nbs > birthLimit) {
-                        newMap[x][y] = true;
+                        newCells[x][y] = true;
                     } else {
-                        newMap[x][y] = false;
+                        newCells[x][y] = false;
                     }
                 }
             }
         }
 
-        return newMap;
+        return newCells;
     }
 
-    private countAliveNeighbours(map: Array<Array<boolean>>, x, y) {
+    private countAliveNeighbours(cells: Array<Array<boolean>>, x, y) {
         let count = 0;
         for (let i = -1; i < 2; i++) {
             for (let j = -1; j < 2; j++) {
                 let nbX = i + x;
                 let nbY = j + y;
-                if (nbX < 0 || nbY < 0 || nbX >= map.length || nbY >= map[0].length) {
+                if (nbX < 0 || nbY < 0 || nbX >= cells.length || nbY >= cells[0].length) {
                     count = count + 1;
-                } else if (map[nbX][nbY] === true) {
+                } else if (cells[nbX][nbY] === true) {
                     count = count + 1;
                 }
             }
