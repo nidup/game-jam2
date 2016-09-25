@@ -18,8 +18,7 @@ class SimpleGame {
     }
 
     public preload() {
-        //this.game.load.image("tileset", "assets/tileset.png");
-        this.game.load.image("tileset", "assets/tileset_debug.png");
+        this.game.load.image("tileset", "assets/tileset.png");
         this.game.load.image("stars", "assets/starfield.jpg");
         this.game.load.image("ship", "assets/thrust_ship2.png");
     }
@@ -137,15 +136,6 @@ class TilemapGenerator {
         let tilesGenerator = new TerrainTileMapGenerator();
         let tiles = tilesGenerator.generate(cells);
 
-        /*
-         var TILE = {
-         FORREST: 		6,
-         EARTH: 			6 + 15 * 1,
-         WATER: 			6 + 15 * 2,
-         DEEPWATER: 	6 + 15 * 3
-         };
-         */
-
         for (let row = 0; row < tiles.length; row++) {
             for (let column = 0; column < tiles[row].length; column++) {
                 map.putTile(tiles[row][column], row, column, layer);
@@ -156,23 +146,111 @@ class TilemapGenerator {
 
 /**
  * Generates a map of numbers representing tile indexes
+ *
+ * Thx Chmood for https://github.com/Chmood/shmup/blob/gh-pages/src/js/game.js
  */
 class TerrainTileMapGenerator {
 
+    public FORREST: number = 6;
+    public SAND: number = 6 + 15 * 1;
+    public WATER: number = 6 + 15 * 2;
+    public DEEP_WATER: number = 6 + 15 * 3;
+    public TILE_STACK: Array<number> = [/*this.FORREST,*/ this.SAND, this.WATER/*, this.DEEP_WATER*/];
+
     public generate(cells: Array<Array<boolean>>) {
+        let tiles = this.initializeWithWaterAndSand(cells);
+        tiles = this.smoothTiles(tiles);
+
+        return tiles;
+    }
+
+    private initializeWithWaterAndSand(cells: Array<Array<boolean>>) {
         let tiles = [[]];
         for (let row = 0; row < cells.length; row++) {
             tiles[row] = [];
             for (let column = 0; column < cells[row].length; column++) {
-                let tileIndex = 6 + 15 * 2;
+                let tileIndex = this.WATER;
                 if (cells[row][column] === false) {
-                    tileIndex = 6 + 15 * 1;
+                    tileIndex = this.SAND;
                 }
                 tiles[row][column] = tileIndex;
             }
         }
 
         return tiles;
+    }
+
+    private smoothTiles(tiles: Array<Array<number>>) {
+        let smoothedTiles = [[]];
+
+        for (let n = 1; n < this.TILE_STACK.length; n++) {
+            let currentLayer = this.TILE_STACK[n];
+            let upperLayer = this.TILE_STACK[n - 1];
+
+            for (let i = 0; i < tiles.length - 1; i++) {
+                smoothedTiles[i] = [];
+                for (let j = 0; j < tiles[i].length - 1; j++) {
+
+                    let q = [[tiles[i][j], tiles[i + 1][j]], [tiles[i][j + 1], tiles[i + 1][j + 1]]];
+
+                    // 4 corners
+                    if (q.join() === [[upperLayer, upperLayer], [upperLayer, upperLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 6;
+
+                    // 3 corners
+                    } else if (q.join() === [[upperLayer, upperLayer], [upperLayer, currentLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 9;
+
+                    } else if (q.join() === [[upperLayer, upperLayer], [currentLayer, upperLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 8;
+
+                    } else if (q.join() === [[currentLayer, upperLayer], [upperLayer, upperLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 3;
+
+                    } else if (q.join() === [[upperLayer, currentLayer], [upperLayer, upperLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 4;
+
+                    // 2 corners
+                    } else if (q.join() === [[upperLayer, upperLayer], [currentLayer, currentLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 11;
+
+                    } else if (q.join() === [[currentLayer, upperLayer], [currentLayer, upperLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 5;
+
+                    } else if (q.join() === [[currentLayer, currentLayer], [upperLayer, upperLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 1;
+
+                    } else if (q.join() === [[upperLayer, currentLayer], [upperLayer, currentLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 7;
+
+                    } else if (q.join() === [[currentLayer, upperLayer], [upperLayer, currentLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 14;
+
+                    } else if (q.join() === [[upperLayer, currentLayer], [currentLayer, upperLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 13;
+
+                    // 1 corner
+                    } else if (q.join() === [[upperLayer, currentLayer], [currentLayer, currentLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 12;
+
+                    } else if (q.join() === [[currentLayer, upperLayer], [currentLayer, currentLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 10;
+
+                    } else if (q.join() === [[currentLayer, currentLayer], [currentLayer, upperLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 0;
+
+                    } else if (q.join() === [[currentLayer, currentLayer], [upperLayer, currentLayer]].join()) {
+                        smoothedTiles[i][j] = (n - 1) * 15 + 2;
+
+                    // no corner
+                    } else if (q.join() === [[currentLayer, currentLayer], [currentLayer, currentLayer]].join()) {
+                        smoothedTiles[i][j] = n * 15 + 6;
+                    }
+                }
+            }
+        }
+
+        return smoothedTiles;
     }
 }
 
