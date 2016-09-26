@@ -39,9 +39,12 @@ class SimpleGame {
         this.game.physics.startSystem(Phaser.Physics.P2JS);
         this.game.physics.p2.restitution = 0.8;
 
+        let seed = "12345"; // ensure a deterministic generation
+        let randGenerator = new Phaser.RandomDataGenerator(seed);
+
         let map = this.game.add.tilemap();
         let generator = new TilemapGenerator();
-        generator.generate(this.game.rnd, map, this.configuration);
+        generator.generate(randGenerator, map, this.configuration);
 
         let playerSprite = this.game.add.sprite(200, 200, "ship");
         playerSprite.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
@@ -122,7 +125,7 @@ class TilemapGenerator {
         );
         layer.scale.setTo(configuration.getPixelRatio(), configuration.getPixelRatio());
 
-        let cellularGenerator = new CellularAutomataMapGenerator();
+        let cellularGenerator = new CellularAutomataMapGenerator(rand);
         let cells = cellularGenerator.generate(configuration.getMapWidthInTiles(), configuration.getMapHeightInTiles());
 
         let tilesGenerator = new TerrainTileMapGenerator();
@@ -331,9 +334,14 @@ class CellularAutomataMapGenerator {
     public STATE_ALIVE_ONE: number = 1;
     public STATE_ALIVE_TWO: number = 2;
     public STATE_ALIVE_THREE: number = 3;
+    private rand: Phaser.RandomDataGenerator;
+
+    constructor (rand: Phaser.RandomDataGenerator) {
+        this.rand = rand;
+    }
 
     public generate(width: number, height: number) {
-        let chanceToStartAlive = 0.4;
+        let chanceToStartAlive = 4;
         let numberOfSteps = 3;
         let deathLimit = 3;
         let birthLimit = 4;
@@ -350,9 +358,10 @@ class CellularAutomataMapGenerator {
         for (let x = 0; x < width; x++) {
             cells[x] = [];
             for (let y = 0; y < height; y++) {
-                if (Math.random() < chanceToStartAlive) {
-                    cells[x][y] = (Math.random() < 0.3) ?
-                        this.STATE_ALIVE_ONE : (Math.random() < 0.5) ? this.STATE_ALIVE_TWO : this.STATE_ALIVE_THREE;
+                if (this.rand.between(1, 10) < chanceToStartAlive) {
+                    cells[x][y] = (this.rand.between(1, 10) < 3) ?
+                        this.STATE_ALIVE_ONE : (this.rand.between(1, 10) < 5) ?
+                            this.STATE_ALIVE_TWO : this.STATE_ALIVE_THREE;
                 } else {
                     cells[x][y] = this.STATE_DEATH;
                 }
