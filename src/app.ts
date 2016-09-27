@@ -4,6 +4,11 @@ class SimpleGame {
     private game: Phaser.Game;
     private configuration: Configuration;
     private ship: PlayerShip;
+    private map: Phaser.Tilemap;
+    private layer: Phaser.TilemapLayer;
+    private chunkRegistry: MapChunkRegistry;
+    private currentChunk: MapChunk;
+    private generating: boolean;
 
     constructor(config: Configuration) {
         this.configuration = config;
@@ -14,6 +19,9 @@ class SimpleGame {
             "content",
             this
         );
+        this.chunkRegistry = new MapChunkRegistry(this.game.rnd, this.configuration);
+
+        this.generating = false;
     }
 
     public preload() {
@@ -27,30 +35,197 @@ class SimpleGame {
     }
 
     public update() {
+
         this.ship.move();
+
+        let borderPadding = this.configuration.getGameWidth() / 2;
+        let borderRight = this.configuration.getMapWidth() - borderPadding;
+        let borderBottom = this.configuration.getMapHeight() - borderPadding;
+        if (this.generating === false && this.ship.getX() > borderRight) {
+            this.generating = true;
+            this.currentChunk = this.chunkRegistry.getRight(this.currentChunk);
+            this.repaintCurrentChunk();
+            this.ship.reset(borderPadding, this.ship.getY());
+            this.generating = false;
+
+        } else if (this.generating === false && this.ship.getX() < borderPadding) {
+            this.generating = true;
+            this.currentChunk = this.chunkRegistry.getLeft(this.currentChunk);
+            this.repaintCurrentChunk();
+            this.ship.reset(borderRight, this.ship.getY());
+            this.generating = false;
+
+        } else if (this.generating === false && this.ship.getY() > borderBottom) {
+            this.generating = true;
+            this.currentChunk = this.chunkRegistry.getBottom(this.currentChunk);
+            this.repaintCurrentChunk();
+            this.ship.reset(this.ship.getX(), borderPadding);
+            this.generating = false;
+
+        } else if (this.generating === false && this.ship.getY() < borderPadding) {
+            this.generating = true;
+            this.currentChunk = this.chunkRegistry.getTop(this.currentChunk);
+            this.repaintCurrentChunk();
+            this.ship.reset(this.ship.getX(), borderBottom);
+            this.generating = false;
+        }
+    }
+
+    private repaintCurrentChunk () {
+        let tiles = this.currentChunk.getTiles();
+
+        let newLayerNumber = new Number(this.layer.name) + 1;
+        let newLayer = this.map.create(
+            "" + newLayerNumber,
+            this.configuration.getMapWidthInTiles(),
+            this.configuration.getMapHeightInTiles(),
+            this.configuration.getTileWidth(),
+            this.configuration.getTileHeight()
+        );
+        newLayer.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
+
+        let painter = new TilemapPainter();
+        painter.paint(this.map, newLayer, tiles);
+
+        this.layer.destroy();
+        this.layer = newLayer;
+        this.ship.bringToTop();
     }
 
     private createWorld() {
 
         let cursors = this.game.input.keyboard.createCursorKeys();
 
-        this.game.world.setBounds(0, 0, this.configuration.getWorldWidth(), this.configuration.getWorldHeight());
+        this.game.world.setBounds(0, 0, this.configuration.getMapWidth(), this.configuration.getMapHeight());
 
         this.game.physics.startSystem(Phaser.Physics.P2JS);
         this.game.physics.p2.restitution = 0.8;
 
-        let seed = "12345"; // ensure a deterministic generation
-        let randGenerator = new Phaser.RandomDataGenerator(seed);
+        this.map = this.game.add.tilemap();
+        this.map.addTilesetImage(
+            "tileset",
+            "tileset",
+            this.configuration.getTileWidth(),
+            this.configuration.getTileHeight()
+        );
+        this.layer = this.map.create(
+            "1",
+            this.configuration.getMapWidthInTiles(),
+            this.configuration.getMapHeightInTiles(),
+            this.configuration.getTileWidth(),
+            this.configuration.getTileHeight()
+        );
+        this.layer.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
 
-        let map = this.game.add.tilemap();
-        let generator = new TilemapGenerator();
-        generator.generate(randGenerator, map, this.configuration);
+        this.currentChunk = this.chunkRegistry.getInitial();
+        let tiles = this.currentChunk.getTiles();
+        let painter = new TilemapPainter();
+        painter.paint(this.map, this.layer, tiles);
 
-        let playerSprite = this.game.add.sprite(200, 200, "ship");
+        let playerSprite = this.game.add.sprite(
+            this.configuration.getMapWidth() / 2,
+            this.configuration.getMapHeight() / 2,
+            "ship"
+        );
         playerSprite.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
         this.game.physics.p2.enable(playerSprite);
         this.game.camera.follow(playerSprite);
         this.ship = new PlayerShip(playerSprite, cursors);
+    }
+}
+
+/**
+ * Represents a map chunk, aka a set of tiles, the rand state allowing to re-generate the same chunk and the position
+ * of the chunk in the map, the first generated chunk has coordinates x: 0, y:0
+ */
+class MapChunk {
+    private tiles: Array<Array<number>>;
+    private positionX: number;
+    private positionY: number;
+    private randState: string;
+
+    constructor (tiles: Array<Array<number>>, randState: string, x: number, y: number) {
+        this.tiles = tiles;
+        this.randState = randState;
+        this.positionX = x;
+        this.positionY = y;
+    }
+
+    public getTiles() {
+        return this.tiles;
+    }
+
+    public getPositionX() {
+        return this.positionX;
+    }
+
+    public getPositionY() {
+        return this.positionY;
+    }
+}
+
+/**
+ * Represents the registry of map chunk
+ */
+class MapChunkRegistry {
+    private randGenerator: Phaser.RandomDataGenerator;
+    private configuration: Configuration;
+    private tilesGenerator: TilemapGenerator;
+    private chunks: Array<MapChunk>;
+
+    constructor (randGenerator: Phaser.RandomDataGenerator, configuration: Configuration) {
+        this.randGenerator = randGenerator;
+        this.configuration = configuration;
+        this.tilesGenerator = new TilemapGenerator();
+        this.chunks = new Array();
+    }
+
+    public getInitial() {
+        return this.getByPosition(0, 0);
+    }
+
+    public getTop(chunk: MapChunk) {
+        return this.getByPosition(chunk.getPositionX(), chunk.getPositionY() - 1);
+    }
+
+    public getBottom(chunk: MapChunk) {
+        return this.getByPosition(chunk.getPositionX(), chunk.getPositionY() + 1);
+    }
+
+    public getRight(chunk: MapChunk) {
+        return this.getByPosition(chunk.getPositionX() + 1, chunk.getPositionY());
+    }
+
+    public getLeft(chunk: MapChunk) {
+        return this.getByPosition(chunk.getPositionX() - 1, chunk.getPositionY());
+    }
+
+    private getByPosition(x: number, y: number) {
+        let key = this.getKeyFromPosition(x, y);
+        if (key in this.chunks) {
+            return this.chunks[key];
+        }
+
+        let newChunk = this.generateChunk(x, y);
+        this.chunks[this.getKeyFromChunk(newChunk)] = newChunk;
+
+        return newChunk;
+    }
+
+    private generateChunk(x: number, y: number) {
+        let randState = this.randGenerator.state();
+        console.log('Generate a new chunk with seed ' + randState);
+        let newTiles = this.tilesGenerator.generate(this.randGenerator, this.configuration);
+
+        return new MapChunk(newTiles, randState, x, y);
+    }
+
+    private getKeyFromChunk (chunk: MapChunk) {
+        return chunk.getPositionX() + "-" + chunk.getPositionY();
+    }
+
+    private getKeyFromPosition (x: number, y: number) {
+        return x + "-" + y;
     }
 }
 
@@ -86,6 +261,23 @@ class PlayerShip implements IShip {
 
         this.controller.limitVelocity(this.sprite, 15);
     }
+
+    public getX() {
+        return this.sprite.x;
+    }
+
+    public getY() {
+        return this.sprite.y;
+    }
+
+    public reset(x: number, y: number) {
+        this.sprite.body.x = x;
+        this.sprite.body.y = y;
+    }
+
+    public bringToTop() {
+        this.sprite.bringToTop();
+    }
 }
 
 /**
@@ -108,34 +300,31 @@ class VelocityController {
     }
 }
 
-class TilemapGenerator {
-    public generate (rand: Phaser.RandomDataGenerator, map: Phaser.Tilemap, configuration: Configuration) {
-        map.addTilesetImage(
-            "tileset",
-            "tileset",
-            configuration.getTileWidth(),
-            configuration.getTileHeight()
-        );
-        let layer = map.create(
-            "ground",
-            configuration.getMapWidthInTiles(),
-            configuration.getMapHeightInTiles(),
-            configuration.getTileWidth(),
-            configuration.getTileHeight()
-        );
-        layer.scale.setTo(configuration.getPixelRatio(), configuration.getPixelRatio());
+/**
+ * Paints a tile map layer with the given set of tiles
+ */
+class TilemapPainter {
+    public paint (map: Phaser.Tilemap, layer: Phaser.TilemapLayer, tiles: Array<Array<number>>) {
+        for (let row = 0; row < tiles.length; row++) {
+            for (let column = 0; column < tiles[row].length; column++) {
+                map.putTile(tiles[row][column], row, column, layer);
+            }
+        }
+    }
+}
 
+/**
+ * Generates tiles for a consistent tilemap
+ */
+class TilemapGenerator {
+    public generate (rand: Phaser.RandomDataGenerator, configuration: Configuration) {
         let cellularGenerator = new CellularAutomataMapGenerator(rand);
         let cells = cellularGenerator.generate(configuration.getMapWidthInTiles(), configuration.getMapHeightInTiles());
 
         let tilesGenerator = new TerrainTileMapGenerator();
         let tiles = tilesGenerator.generate(cells);
 
-        for (let row = 0; row < tiles.length; row++) {
-            for (let column = 0; column < tiles[row].length; column++) {
-                map.putTile(tiles[row][column], row, column, layer);
-            }
-        }
+        return tiles;
     }
 }
 
@@ -457,14 +646,6 @@ class Configuration {
         return 500;
     }
 
-    public getWorldWidth() {
-        return 100000;
-    }
-
-    public getWorldHeight() {
-        return 100000;
-    }
-
     public getTileWidth() {
         return 24;
     }
@@ -474,15 +655,23 @@ class Configuration {
     }
 
     public getMapWidthInTiles() {
-        return 50;
+        return 40;
     }
 
     public getMapHeightInTiles() {
-        return 50;
+        return 40;
     }
 
     public getPixelRatio() {
         return 2;
+    }
+
+    public getMapWidth() {
+        return (this.getMapWidthInTiles() - 1) * this.getTileWidth() * this.getPixelRatio();
+    }
+
+    public getMapHeight() {
+        return (this.getMapHeightInTiles() - 1) * this.getTileHeight() * this.getPixelRatio();
     }
 }
 
