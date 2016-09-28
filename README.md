@@ -18,8 +18,9 @@ You need to have `node` and `npm` installed
 
 You need to have typescript installed (globally or not):
 ```
-npm install typescript
-npm install tslint
+npm install -g typescript
+npm install -g tslint
+npm install -g webpack
 ```
 
 Then inside the project directory run:

@@ -17,5 +17,8 @@
   "devDependencies": {
     "webpack": "^1.12.12",
     "webpack-dev-server": "^1.14.1"
+  },
+  "dependencies": {
+    "ts-loader": "^0.8.2"
   }
 }
