@@ -50,7 +50,6 @@ export class MapChunkRegistry {
 
     private generateChunk(x: number, y: number) {
         let randState = this.randGenerator.state();
-        console.log('Generate a new chunk with seed ' + randState);
         let newTiles = this.tilesGenerator.generate(this.randGenerator, this.configuration);
 
         return new MapChunk(newTiles, randState, x, y);
@@ -170,37 +169,45 @@ class TerrainTileMapGenerator {
             for (let i = 0; i < tiles.length ; i++) {
                 for (let j = 0; j < tiles[i].length; j++) {
                     if (tiles[i][j] === tileCurrent) {
-
-                        // Left up
-                        if (i > 0 && j > 0 && tiles[i - 1][j - 1] !== tileCurrent && tiles[i - 1][j - 1] !== tileAbove && tiles[i - 1][j - 1] !== tileBelow) {
+                        let isLeftUp = i > 0 && j > 0 && tiles[i - 1][j - 1] !== tileCurrent
+                            && tiles[i - 1][j - 1] !== tileAbove && tiles[i - 1][j - 1] !== tileBelow;
+                        if (isLeftUp) {
                             tiles[i - 1][j - 1] = tileBelow;
                         }
-                        // Mid up
-                        if (j > 0 && tiles[i][j - 1] !== tileCurrent && tiles[i][j - 1] !== tileAbove && tiles[i][j - 1] !== tileBelow) {
+                        let isMidUp = j > 0 && tiles[i][j - 1] !== tileCurrent && tiles[i][j - 1] !== tileAbove
+                            && tiles[i][j - 1] !== tileBelow;
+                        if (isMidUp) {
                             tiles[i][j - 1] = tileBelow;
                         }
-                        // Right up
-                        if (i < tiles.length - 1 && j > 0 && tiles[i + 1][j - 1] !== tileCurrent && tiles[i + 1][j - 1] !== tileAbove && tiles[i + 1][j - 1] !== tileBelow) {
+                        let isRightUp = i < tiles.length - 1 && j > 0 && tiles[i + 1][j - 1] !== tileCurrent
+                            && tiles[i + 1][j - 1] !== tileAbove && tiles[i + 1][j - 1] !== tileBelow;
+                        if (isRightUp) {
                             tiles[i + 1][j - 1] = tileBelow;
                         }
-                        // Right mid
-                        if (i < tiles.length - 1 && tiles[i + 1][j] !== tileCurrent && tiles[i + 1][j] !== tileAbove && tiles[i + 1][j] !== tileBelow) {
+                        let isRightMid = i < tiles.length - 1 && tiles[i + 1][j] !== tileCurrent
+                            && tiles[i + 1][j] !== tileAbove && tiles[i + 1][j] !== tileBelow;
+                        if (isRightMid) {
                             tiles[i + 1][j] = tileBelow;
                         }
-                        // Right down
-                        if (i < tiles.length - 1 && j < tiles[i].length - 1 && tiles[i + 1][j + 1] !== tileCurrent && tiles[i + 1][j + 1] !== tileAbove && tiles[i + 1][j + 1] !== tileBelow) {
+                        let isRightDown = i < tiles.length - 1 && j < tiles[i].length - 1
+                            && tiles[i + 1][j + 1] !== tileCurrent && tiles[i + 1][j + 1] !== tileAbove
+                            && tiles[i + 1][j + 1] !== tileBelow;
+                        if (isRightDown) {
                             tiles[i + 1][j + 1] = tileBelow;
                         }
-                        // Mid down
-                        if (j < tiles[i].length - 1 && tiles[i][j + 1] !== tileCurrent && tiles[i][j + 1] !== tileAbove && tiles[i][j + 1] !== tileBelow) {
+                        let isMidDown = j < tiles[i].length - 1 && tiles[i][j + 1] !== tileCurrent
+                            && tiles[i][j + 1] !== tileAbove && tiles[i][j + 1] !== tileBelow;
+                        if (isMidDown) {
                             tiles[i][j + 1] = tileBelow;
                         }
-                        // Left down
-                        if (i > 0 && j < tiles[i].length - 1 && tiles[i - 1][j + 1] !== tileCurrent && tiles[i - 1][j + 1] !== tileAbove && tiles[i - 1][j + 1] !== tileBelow) {
+                        let isLeftDown = i > 0 && j < tiles[i].length - 1 && tiles[i - 1][j + 1] !== tileCurrent
+                            && tiles[i - 1][j + 1] !== tileAbove && tiles[i - 1][j + 1] !== tileBelow;
+                        if (isLeftDown) {
                             tiles[i - 1][j + 1] = tileBelow;
                         }
-                        // Left mid
-                        if (i > 0 && tiles[i - 1][j] !== tileCurrent && tiles[i - 1][j] !== tileAbove && tiles[i - 1][j] !== tileBelow) {
+                        let isLeftMid = i > 0 && tiles[i - 1][j] !== tileCurrent
+                            && tiles[i - 1][j] !== tileAbove && tiles[i - 1][j] !== tileBelow;
+                        if (isLeftMid) {
                             tiles[i - 1][j] = tileBelow;
                         }
                     }
@@ -280,7 +287,7 @@ class TerrainTileMapGenerator {
                     } else if (q.join() === [[currentLayer, currentLayer], [upperLayer, currentLayer]].join()) {
                         roundedTiles[i][j] = (n - 1) * 15 + 2;
 
-                        // no corner
+                    // no corner
                     } else if (q.join() === [[currentLayer, currentLayer], [currentLayer, currentLayer]].join()) {
                         roundedTiles[i][j] = n * 15 + 6;
                     }
