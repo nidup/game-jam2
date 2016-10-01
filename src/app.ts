@@ -13,6 +13,8 @@ class SimpleGame {
     private layer: Phaser.TilemapLayer = null;
     private generating: boolean = false;
 
+    private nextLayer: Phaser.TilemapLayer = null;
+
     constructor(config: Configuration) {
         this.configuration = config;
         this.game = new Phaser.Game(
@@ -71,29 +73,9 @@ class SimpleGame {
             this.repaintCurrentChunk();
             this.ship.reset(this.ship.getX(), borderBottom);
             this.generating = false;
-        }
-    }
 
-    private repaintCurrentChunk () {
-        let tiles = this.currentChunk.getFinalTiles();
-        let newLayer = this.map.create(
-            this.currentChunk.getRandState(),
-            this.configuration.getMapChunkWidthInTiles(),
-            this.configuration.getMapChunkHeightInTiles(),
-            this.configuration.getTileWidth(),
-            this.configuration.getTileHeight()
-        );
-        newLayer.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
-
-        let painter = new TilemapPainter();
-        painter.paint(this.configuration, this.map, newLayer, tiles);
-
-        if (this.layer !== null) {
-            this.layer.destroy();
-        }
-        this.layer = newLayer;
-        if (this.ship !== null) {
-            this.ship.bringToTop();
+        } else {
+            this.prepareNeighbourChunks();
         }
     }
 
@@ -126,10 +108,52 @@ class SimpleGame {
         this.game.physics.p2.enable(playerSprite);
         this.game.camera.follow(playerSprite);
         this.ship = new PlayerShip(playerSprite, cursors);
+    }
 
-        console.log(this.configuration.getGameWidth());
-        console.log(this.configuration.getMapChunkWidthInTiles());
-        console.log(this.configuration.getEmptyWidthInTiles());
+    private repaintCurrentChunk () {
+        let newLayer = this.getLayer(this.currentChunk);
+
+        if (this.layer !== null) {
+            this.layer.destroy();
+        }
+        this.layer = newLayer;
+        if (this.ship !== null) {
+            this.ship.bringToTop();
+        }
+    }
+
+    private getLayer(chunk: MapChunk) {
+        let newLayer = this.map.create(
+            this.currentChunk.getRandState(),
+            this.configuration.getMapChunkWidthInTiles(),
+            this.configuration.getMapChunkHeightInTiles(),
+            this.configuration.getTileWidth(),
+            this.configuration.getTileHeight()
+        );
+        newLayer.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
+
+        let tiles = this.currentChunk.getFinalTiles();
+        let painter = new TilemapPainter();
+        painter.paint(this.configuration, this.map, newLayer, tiles);
+
+        return newLayer;
+    }
+
+    private prepareNeighbourChunks() {
+        if (this.nextLayer === null) {
+            let right = this.chunkRegistry.getRight(this.currentChunk);
+            //this.nextLayer = this.getLayer(right);
+            //this.layer.bringToTop();
+            /*
+            console.log(this.map.layers);
+            console.log(this.layer);
+            console.log(this.map.objects);
+            */
+        }
+
+
+
+        // this.chunkRegistry.getRight(this.currentChunk);
     }
 }
 

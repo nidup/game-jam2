@@ -527,6 +527,9 @@ class BaseTilesGenerator {
             //debug.display(baseTiles);
         }
 
+        // TODO: need to re-work this part to never replace init cell during generation to avoid to have weird
+        // map chunk transitions
+
         for (let i = 0; i < numberOfSteps; i++) {
             baseTiles = this.doSimulationStep(baseTiles, deathLimit, birthLimit);
             if (initCells !== null) {
