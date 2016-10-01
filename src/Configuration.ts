@@ -4,11 +4,23 @@
 export default class Configuration {
 
     public getGameWidth() {
-        return this.getTileWidth() * this.getMapWidthInTiles() * this.getPixelRatio();
+        return this.getTileWidth() * this.getGameWidthInTiles() * this.getPixelRatio();
     }
 
     public getGameHeight() {
-        return this.getTileHeight() * this.getMapHeightInTiles() * this.getPixelRatio();
+        return this.getTileHeight() * this.getGameHeightInTiles() * this.getPixelRatio();
+    }
+
+    public getGameWidthInTiles() {
+        return 10;
+    }
+
+    public getGameHeightInTiles() {
+        return 10;
+    }
+
+    public getPixelRatio() {
+        return 2;
     }
 
     public getTileWidth() {
@@ -19,23 +31,35 @@ export default class Configuration {
         return 28;
     }
 
-    public getMapWidthInTiles() {
-        return 10;
+    public getEmptyWidthInTiles() {
+        return this.getGameWidthInTiles() / 2;
     }
 
-    public getMapHeightInTiles() {
-        return 7;
+    public getEmptyHeightInTiles() {
+        return this.getGameHeightInTiles() / 2;
     }
 
-    public getPixelRatio() {
-        return 2;
+    public getEmptyWidth() {
+        return this.getEmptyWidthInTiles() * this.getTileWidth() * this.getPixelRatio();
     }
 
-    public getMapWidth() {
-        return (this.getMapWidthInTiles() - 1) * this.getTileWidth() * this.getPixelRatio();
+    public getEmptyHeight() {
+        return this.getEmptyHeightInTiles() * this.getTileHeight() * this.getPixelRatio();
     }
 
-    public getMapHeight() {
-        return (this.getMapHeightInTiles() - 1) * this.getTileHeight() * this.getPixelRatio();
+    public getMapChunkWidthInTiles() {
+        return 40;
+    }
+
+    public getMapChunkHeightInTiles() {
+        return 40;
+    }
+
+    public getMapChunkWidth() {
+        return this.getMapChunkWidthInTiles() * this.getTileWidth() * this.getPixelRatio();
+    }
+
+    public getMapChunkHeight() {
+        return this.getMapChunkHeightInTiles() * this.getTileHeight() * this.getPixelRatio();
     }
 }

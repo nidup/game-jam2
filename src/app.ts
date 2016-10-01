@@ -6,12 +6,12 @@ import {MapChunkRegistry, MapChunk} from "./MapGenerator";
 class SimpleGame {
     private game: Phaser.Game;
     private configuration: Configuration;
-    private ship: PlayerShip;
-    private map: Phaser.Tilemap;
-    private layer: Phaser.TilemapLayer;
     private chunkRegistry: MapChunkRegistry;
     private currentChunk: MapChunk;
-    private generating: boolean;
+    private ship: PlayerShip = null;
+    private map: Phaser.Tilemap = null;
+    private layer: Phaser.TilemapLayer = null;
+    private generating: boolean = false;
 
     constructor(config: Configuration) {
         this.configuration = config;
@@ -23,8 +23,6 @@ class SimpleGame {
             this
         );
         this.chunkRegistry = new MapChunkRegistry(this.game.rnd, this.configuration);
-
-        this.generating = false;
     }
 
     public preload() {
@@ -41,17 +39,19 @@ class SimpleGame {
 
         this.ship.move();
 
-        let borderPadding = this.configuration.getGameWidth() / 2;
-        let borderRight = this.configuration.getMapWidth() - borderPadding;
-        let borderBottom = this.configuration.getMapHeight() - borderPadding;
+        let borderLeft = this.configuration.getEmptyWidth() * 2;
+        let borderTop = this.configuration.getEmptyHeight() * 2;
+        let borderRight = this.configuration.getMapChunkWidth() - this.configuration.getEmptyWidth();
+        let borderBottom = this.configuration.getMapChunkHeight() - this.configuration.getEmptyHeight();
+
         if (this.generating === false && this.ship.getX() > borderRight) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getRight(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(borderPadding, this.ship.getY());
+            this.ship.reset(borderLeft, this.ship.getY());
             this.generating = false;
 
-        } else if (this.generating === false && this.ship.getX() < borderPadding) {
+        } else if (this.generating === false && this.ship.getX() < borderLeft) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getLeft(this.currentChunk);
             this.repaintCurrentChunk();
@@ -62,10 +62,10 @@ class SimpleGame {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getBottom(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(this.ship.getX(), borderPadding);
+            this.ship.reset(this.ship.getX(), borderTop);
             this.generating = false;
 
-        } else if (this.generating === false && this.ship.getY() < borderPadding) {
+        } else if (this.generating === false && this.ship.getY() < borderTop) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getTop(this.currentChunk);
             this.repaintCurrentChunk();
@@ -75,31 +75,33 @@ class SimpleGame {
     }
 
     private repaintCurrentChunk () {
-        let tiles = this.currentChunk.getTiles();
-
-        let newLayerNumber = this.layer.name + 1;
+        let tiles = this.currentChunk.getFinalTiles();
         let newLayer = this.map.create(
-            "" + newLayerNumber,
-            this.configuration.getMapWidthInTiles(),
-            this.configuration.getMapHeightInTiles(),
+            this.currentChunk.getRandState(),
+            this.configuration.getMapChunkWidthInTiles(),
+            this.configuration.getMapChunkHeightInTiles(),
             this.configuration.getTileWidth(),
             this.configuration.getTileHeight()
         );
         newLayer.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
 
         let painter = new TilemapPainter();
-        painter.paint(this.map, newLayer, tiles);
+        painter.paint(this.configuration, this.map, newLayer, tiles);
 
-        this.layer.destroy();
+        if (this.layer !== null) {
+            this.layer.destroy();
+        }
         this.layer = newLayer;
-        this.ship.bringToTop();
+        if (this.ship !== null) {
+            this.ship.bringToTop();
+        }
     }
 
     private createWorld() {
 
         let cursors = this.game.input.keyboard.createCursorKeys();
 
-        this.game.world.setBounds(0, 0, this.configuration.getMapWidth(), this.configuration.getMapHeight());
+        this.game.world.setBounds(0, 0, this.configuration.getMapChunkWidth(), this.configuration.getMapChunkHeight());
 
         this.game.physics.startSystem(Phaser.Physics.P2JS);
         this.game.physics.p2.restitution = 0.8;
@@ -111,29 +113,23 @@ class SimpleGame {
             this.configuration.getTileWidth(),
             this.configuration.getTileHeight()
         );
-        this.layer = this.map.create(
-            "1",
-            this.configuration.getMapWidthInTiles(),
-            this.configuration.getMapHeightInTiles(),
-            this.configuration.getTileWidth(),
-            this.configuration.getTileHeight()
-        );
-        this.layer.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
 
         this.currentChunk = this.chunkRegistry.getInitial();
-        let tiles = this.currentChunk.getTiles();
-        let painter = new TilemapPainter();
-        painter.paint(this.map, this.layer, tiles);
+        this.repaintCurrentChunk();
 
         let playerSprite = this.game.add.sprite(
-            this.configuration.getMapWidth() / 2,
-            this.configuration.getMapHeight() / 2,
+            this.configuration.getMapChunkWidth() / 2,
+            this.configuration.getMapChunkHeight() / 2,
             "ship"
         );
         playerSprite.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
         this.game.physics.p2.enable(playerSprite);
         this.game.camera.follow(playerSprite);
         this.ship = new PlayerShip(playerSprite, cursors);
+
+        console.log(this.configuration.getGameWidth());
+        console.log(this.configuration.getMapChunkWidthInTiles());
+        console.log(this.configuration.getEmptyWidthInTiles());
     }
 }
 
@@ -209,13 +205,20 @@ class VelocityController {
 }
 
 /**
- * Paints a tile map layer with the given set of tiles
+ * Paints a tile map layer with the given set of tiles, the layer will contains empty tiles around the painted tiles to
+ * allow to always keep the player centered in the screen
  */
 class TilemapPainter {
-    public paint (map: Phaser.Tilemap, layer: Phaser.TilemapLayer, tiles: Array<Array<number>>) {
-        for (let column = 0; column < tiles.length; column++) {
-            for (let row = 0; row < tiles[column].length; row++) {
-                map.putTile(tiles[column][row], column, row, layer);
+    public paint (configuration: Configuration, map: Phaser.Tilemap, layer: Phaser.TilemapLayer, tiles: Array<Array<number>>) {
+
+        let nbColumns = tiles.length;
+        let nbRows = tiles[0].length;
+        let nbEmptyColumns = configuration.getEmptyWidthInTiles();
+        let nbEmptyRows = configuration.getEmptyHeightInTiles();
+
+        for (let column = 0; column < nbColumns; column++) {
+            for (let row = 0; row < nbRows; row++) {
+                map.putTile(tiles[column][row], column + nbEmptyColumns, row + nbEmptyRows, layer);
             }
         }
     }

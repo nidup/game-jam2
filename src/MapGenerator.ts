@@ -54,6 +54,10 @@ export class MapChunk {
     public getPositionY() {
         return this.positionY;
     }
+
+    public getRandState() {
+        return this.randState;
+    }
 }
 
 /**
@@ -163,8 +167,8 @@ class MapChunkGenerator {
         if (chunk !== null) {
             let generator = new NeighbourTilesGenerator();
             let debug = new TilesDebugger();
-            console.log('previous chunk');
-            debug.display(chunk.getSmoothTiles());
+            //console.log('previous chunk');
+            //debug.display(chunk.getSmoothTiles());
             initTiles = generator.generate(chunk.getSmoothTiles(), Directions.LEFT);
         }
 
@@ -176,8 +180,8 @@ class MapChunkGenerator {
         if (chunk !== null) {
             let generator = new NeighbourTilesGenerator();
             let debug = new TilesDebugger();
-            console.log('previous chunk');
-            debug.display(chunk.getSmoothTiles());
+            //console.log('previous chunk');
+            //debug.display(chunk.getSmoothTiles());
             initTiles = generator.generate(chunk.getSmoothTiles(), Directions.RIGHT);
         }
 
@@ -189,8 +193,8 @@ class MapChunkGenerator {
         if (chunk !== null) {
             let generator = new NeighbourTilesGenerator();
             let debug = new TilesDebugger();
-            console.log('previous chunk');
-            debug.display(chunk.getSmoothTiles());
+            //console.log('previous chunk');
+            //debug.display(chunk.getSmoothTiles());
             initTiles = generator.generate(chunk.getSmoothTiles(), Directions.TOP);
         }
 
@@ -202,8 +206,8 @@ class MapChunkGenerator {
         if (chunk !== null) {
             let generator = new NeighbourTilesGenerator();
             let debug = new TilesDebugger();
-            console.log('previous chunk');
-            debug.display(chunk.getSmoothTiles());
+            //console.log('previous chunk');
+            //debug.display(chunk.getSmoothTiles());
             initTiles = generator.generate(chunk.getSmoothTiles(), Directions.BOTTOM);
         }
 
@@ -222,8 +226,8 @@ class MapChunkGenerator {
 
         let baseTilesGenerator = new BaseTilesGenerator(rand);
         let baseTiles = baseTilesGenerator.generate(
-            configuration.getMapWidthInTiles(),
-            configuration.getMapHeightInTiles(),
+            configuration.getMapChunkWidthInTiles(),
+            configuration.getMapChunkHeightInTiles(),
             initCells
         );
 
@@ -231,8 +235,8 @@ class MapChunkGenerator {
         let smoothTiles = smoothTilesGenerator.generate(baseTiles);
 
         if (initCells !== null) {
-            console.log('smooth');
-            debug.display(smoothTiles);
+            //console.log('smooth');
+            //debug.display(smoothTiles);
         }
 
         let randState = rand.state();
@@ -519,15 +523,15 @@ class BaseTilesGenerator {
         let baseTiles = this.initialize(width, height, chanceToStartAlive, initCells);
         let debug = new TilesDebugger();
         if (initCells !== null) {
-            console.log('init cells');
-            debug.display(baseTiles);
+            //console.log('init cells');
+            //debug.display(baseTiles);
         }
 
         for (let i = 0; i < numberOfSteps; i++) {
             baseTiles = this.doSimulationStep(baseTiles, deathLimit, birthLimit);
             if (initCells !== null) {
-                console.log('init cells next step');
-                debug.display(baseTiles);
+                //console.log('init cells next step');
+                //debug.display(baseTiles);
             }
         }
 
