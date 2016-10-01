@@ -213,9 +213,9 @@ class VelocityController {
  */
 class TilemapPainter {
     public paint (map: Phaser.Tilemap, layer: Phaser.TilemapLayer, tiles: Array<Array<number>>) {
-        for (let row = 0; row < tiles.length; row++) {
-            for (let column = 0; column < tiles[row].length; column++) {
-                map.putTile(tiles[row][column], row, column, layer);
+        for (let column = 0; column < tiles.length; column++) {
+            for (let row = 0; row < tiles[column].length; row++) {
+                map.putTile(tiles[column][row], column, row, layer);
             }
         }
     }

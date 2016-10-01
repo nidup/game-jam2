@@ -4,11 +4,11 @@
 export default class Configuration {
 
     public getGameWidth() {
-        return 500;
+        return this.getTileWidth() * this.getMapWidthInTiles() * this.getPixelRatio();
     }
 
     public getGameHeight() {
-        return 500;
+        return this.getTileHeight() * this.getMapHeightInTiles() * this.getPixelRatio();
     }
 
     public getTileWidth() {
@@ -20,11 +20,11 @@ export default class Configuration {
     }
 
     public getMapWidthInTiles() {
-        return 40;
+        return 10;
     }
 
     public getMapHeightInTiles() {
-        return 40;
+        return 7;
     }
 
     public getPixelRatio() {

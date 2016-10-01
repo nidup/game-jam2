@@ -1,88 +1,50 @@
 import Configuration from "./Configuration";
 
 /**
- * Represents the registry of MapChunk, it internally generates new MapChunk on demand
- */
-export class MapChunkRegistry {
-    private randGenerator: Phaser.RandomDataGenerator;
-    private configuration: Configuration;
-    private tilesGenerator: TilemapGenerator;
-    private chunks: Array<MapChunk>;
-
-    constructor (randGenerator: Phaser.RandomDataGenerator, configuration: Configuration) {
-        this.randGenerator = randGenerator;
-        this.configuration = configuration;
-        this.tilesGenerator = new TilemapGenerator();
-        this.chunks = new Array();
-    }
-
-    public getInitial() {
-        return this.getByPosition(0, 0);
-    }
-
-    public getTop(chunk: MapChunk) {
-        return this.getByPosition(chunk.getPositionX(), chunk.getPositionY() - 1);
-    }
-
-    public getBottom(chunk: MapChunk) {
-        return this.getByPosition(chunk.getPositionX(), chunk.getPositionY() + 1);
-    }
-
-    public getRight(chunk: MapChunk) {
-        return this.getByPosition(chunk.getPositionX() + 1, chunk.getPositionY());
-    }
-
-    public getLeft(chunk: MapChunk) {
-        return this.getByPosition(chunk.getPositionX() - 1, chunk.getPositionY());
-    }
-
-    private getByPosition(x: number, y: number) {
-        let key = this.getKeyFromPosition(x, y);
-        if (key in this.chunks) {
-            return this.chunks[key];
-        }
-
-        let newChunk = this.generateChunk(x, y);
-        this.chunks[this.getKeyFromChunk(newChunk)] = newChunk;
-
-        return newChunk;
-    }
-
-    private generateChunk(x: number, y: number) {
-        let randState = this.randGenerator.state();
-        let newTiles = this.tilesGenerator.generate(this.randGenerator, this.configuration);
-
-        return new MapChunk(newTiles, randState, x, y);
-    }
-
-    private getKeyFromChunk (chunk: MapChunk) {
-        return chunk.getPositionX() + "-" + chunk.getPositionY();
-    }
-
-    private getKeyFromPosition (x: number, y: number) {
-        return x + "-" + y;
-    }
-}
-
-/**
- * Represents a MapChunk, aka a set of tiles, the rand state allowing to re-generate the same chunk and the position
- * of the chunk in the map, the first generated chunk has coordinates x: 0, y:0
+ * Represents a MapChunk, a chunk of the global map with coordinates and the tiles to display.
+ *
+ * baseTiles = only base ground tiles for sand, forrest, water and deep water
+ * smoothedTiles = ordered base tiles to avoid to have neighbour incompatibility, for instance, forrest and water
+ * finalTiles = base tiles are here replaced by rounded tiles allowing sweet transitions between grounds
+ *
+ * the rand state allows to re-generate the exact same chunk
+ *
+ * the first generated chunk has coordinates x: 0, y:0
  */
 export class MapChunk {
-    private tiles: Array<Array<number>>;
+    private baseTiles: Array<Array<number>>;
+    private smoothTiles: Array<Array<number>>;
+    private finalTiles: Array<Array<number>>;
     private positionX: number;
     private positionY: number;
     private randState: string;
 
-    constructor (tiles: Array<Array<number>>, randState: string, x: number, y: number) {
-        this.tiles = tiles;
+    constructor (
+        baseTiles: Array<Array<number>>,
+        smoothTiles: Array<Array<number>>,
+        finalTiles: Array<Array<number>>,
+        randState: string,
+        x: number,
+        y: number
+    ) {
+        this.baseTiles = baseTiles;
+        this.smoothTiles = smoothTiles;
+        this.finalTiles = finalTiles;
         this.randState = randState;
         this.positionX = x;
         this.positionY = y;
     }
 
-    public getTiles() {
-        return this.tiles;
+    public getBaseTiles() {
+        return this.baseTiles;
+    }
+
+    public getSmoothTiles() {
+        return this.smoothTiles;
+    }
+
+    public getFinalTiles() {
+        return this.finalTiles;
     }
 
     public getPositionX() {
@@ -95,147 +57,223 @@ export class MapChunk {
 }
 
 /**
- * Generates tiles for a consistent tilemap
+ * Represents the registry of MapChunk, it internally generates new MapChunk on demand
  */
-class TilemapGenerator {
-    public generate (rand: Phaser.RandomDataGenerator, configuration: Configuration) {
-        let cellularGenerator = new CellularAutomataMapGenerator(rand);
-        let cells = cellularGenerator.generate(configuration.getMapWidthInTiles(), configuration.getMapHeightInTiles());
+export class MapChunkRegistry {
+    private randGenerator: Phaser.RandomDataGenerator;
+    private configuration: Configuration;
+    private generator: MapChunkGenerator;
+    private chunks: Array<MapChunk>;
 
-        let tilesGenerator = new TerrainTileMapGenerator();
-        let tiles = tilesGenerator.generate(cells);
+    constructor (randGenerator: Phaser.RandomDataGenerator, configuration: Configuration) {
+        this.randGenerator = randGenerator;
+        this.configuration = configuration;
+        this.generator = new MapChunkGenerator();
+        this.chunks = new Array();
+    }
 
-        return tiles;
+    public getInitial() {
+        let x = 0;
+        let y = 0;
+        let newChunk = this.generator.generateInitial(this.randGenerator, this.configuration, x, y);
+        this.chunks[this.getKeyFromChunk(newChunk)] = newChunk;
+
+        return newChunk;
+    }
+
+    public getTop(chunk: MapChunk) {
+        let x = chunk.getPositionX();
+        let y = chunk.getPositionY() - 1;
+        let newChunk = this.getByPosition(x, y);
+        if (newChunk === null) {
+            newChunk = this.generator.generateTopOf(chunk, this.randGenerator, this.configuration, x, y);
+            this.chunks[this.getKeyFromChunk(newChunk)] = newChunk;
+        }
+
+        return newChunk;
+    }
+
+    public getBottom(chunk: MapChunk) {
+        let x = chunk.getPositionX();
+        let y = chunk.getPositionY() + 1;
+        let newChunk = this.getByPosition(x, y);
+        if (newChunk === null) {
+            newChunk = this.generator.generateBottomOf(chunk, this.randGenerator, this.configuration, x, y);
+            this.chunks[this.getKeyFromChunk(newChunk)] = newChunk;
+        }
+
+        return newChunk;
+    }
+
+    public getRight(chunk: MapChunk) {
+        let x = chunk.getPositionX() + 1;
+        let y = chunk.getPositionY();
+        let newChunk = this.getByPosition(x, y);
+        if (newChunk === null) {
+            newChunk = this.generator.generateRightOf(chunk, this.randGenerator, this.configuration, x, y);
+            this.chunks[this.getKeyFromChunk(newChunk)] = newChunk;
+        }
+
+        return newChunk;
+    }
+
+    public getLeft(chunk: MapChunk) {
+        let x = chunk.getPositionX() - 1;
+        let y = chunk.getPositionY();
+        let newChunk = this.getByPosition(x, y);
+
+        if (newChunk === null) {
+            newChunk = this.generator.generateLeftOf(chunk, this.randGenerator, this.configuration, x, y);
+            this.chunks[this.getKeyFromChunk(newChunk)] = newChunk;
+        }
+
+        return newChunk;
+    }
+
+    private getByPosition(x: number, y: number) {
+        let key = this.getKeyFromPosition(x, y);
+        if (key in this.chunks) {
+            return this.chunks[key];
+        }
+
+        return null;
+    }
+
+    private getKeyFromChunk (chunk: MapChunk) {
+        return chunk.getPositionX() + "-" + chunk.getPositionY();
+    }
+
+    private getKeyFromPosition (x: number, y: number) {
+        return x + "-" + y;
     }
 }
 
 /**
- * Generates a map of numbers representing tile indexes in the sprite
- *
- * Huge Thx to Chmood who inspirates this generator here https://github.com/Chmood/shmup/blob/gh-pages/src/js/game.js
+ * Generates MapChunk from neighbour to be able to get consistent junctions between chunks when passing from a chunk
+ * to another (no water to forest)
  */
-class TerrainTileMapGenerator {
+class MapChunkGenerator {
 
-    public FORREST: number = 6;
-    public SAND: number = 6 + 15 * 1;
-    public WATER: number = 6 + 15 * 2;
-    public DEEP_WATER: number = 6 + 15 * 3;
-    public TILE_STACK: Array<number> = [this.FORREST, this.SAND, this.WATER, this.DEEP_WATER];
-
-    /**
-     * Generates the tiles, the tile number is related to the index in the tile sprite
-     * @param cells
-     * @returns {Array[]}
-     */
-    public generate(cells: Array<Array<number>>) {
-        let tiles = this.initializeWithBaseTiles(cells);
-        tiles = this.smoothTiles(tiles);
-        tiles = this.roundTiles(tiles);
-
-        return tiles;
+    public generateInitial(rand: Phaser.RandomDataGenerator, configuration: Configuration, x: number, y: number) {
+        return this.generateFromInitTiles(rand, configuration, x, y, null);
     }
 
-    /**
-     * Set up the tile map with base tiles, aka, forrest, sand, water, deep water
-     * @param cells
-     * @returns {Array[]}
-     */
-    private initializeWithBaseTiles(cells: Array<Array<number>>) {
-        let tiles = [[]];
-        for (let row = 0; row < cells.length; row++) {
-            tiles[row] = [];
-            for (let column = 0; column < cells[row].length; column++) {
-                tiles[row][column] = this.TILE_STACK[cells[row][column]];
-            }
+    public generateLeftOf(chunk: MapChunk, rand: Phaser.RandomDataGenerator, configuration: Configuration, x: number, y: number) {
+        let initTiles = null;
+        if (chunk !== null) {
+            let generator = new NeighbourTilesGenerator();
+            let debug = new TilesDebugger();
+            console.log('previous chunk');
+            debug.display(chunk.getSmoothTiles());
+            initTiles = generator.generate(chunk.getSmoothTiles(), Directions.LEFT);
         }
 
-        return tiles;
+        return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
     }
 
-    /**
-     * Erase difference between tile layer, for instance, it means that forrest can touch sand but not water, sand can
-     * touch water but not deep water, etc
-     *
-     * @param tiles
-     * @returns {Array<Array<number>>}
-     */
-    private smoothTiles(tiles: Array<Array<number>>) {
-        for (let n = 0; n < this.TILE_STACK.length - 1; n++) {
-
-            let tileCurrent = this.TILE_STACK[n];
-            let tileAbove = (n > 0) ? this.TILE_STACK[n - 1] :  -1;
-            let tileBelow =  this.TILE_STACK[n + 1];
-
-            for (let i = 0; i < tiles.length ; i++) {
-                for (let j = 0; j < tiles[i].length; j++) {
-                    if (tiles[i][j] === tileCurrent) {
-                        let isLeftUp = i > 0 && j > 0 && tiles[i - 1][j - 1] !== tileCurrent
-                            && tiles[i - 1][j - 1] !== tileAbove && tiles[i - 1][j - 1] !== tileBelow;
-                        if (isLeftUp) {
-                            tiles[i - 1][j - 1] = tileBelow;
-                        }
-                        let isMidUp = j > 0 && tiles[i][j - 1] !== tileCurrent && tiles[i][j - 1] !== tileAbove
-                            && tiles[i][j - 1] !== tileBelow;
-                        if (isMidUp) {
-                            tiles[i][j - 1] = tileBelow;
-                        }
-                        let isRightUp = i < tiles.length - 1 && j > 0 && tiles[i + 1][j - 1] !== tileCurrent
-                            && tiles[i + 1][j - 1] !== tileAbove && tiles[i + 1][j - 1] !== tileBelow;
-                        if (isRightUp) {
-                            tiles[i + 1][j - 1] = tileBelow;
-                        }
-                        let isRightMid = i < tiles.length - 1 && tiles[i + 1][j] !== tileCurrent
-                            && tiles[i + 1][j] !== tileAbove && tiles[i + 1][j] !== tileBelow;
-                        if (isRightMid) {
-                            tiles[i + 1][j] = tileBelow;
-                        }
-                        let isRightDown = i < tiles.length - 1 && j < tiles[i].length - 1
-                            && tiles[i + 1][j + 1] !== tileCurrent && tiles[i + 1][j + 1] !== tileAbove
-                            && tiles[i + 1][j + 1] !== tileBelow;
-                        if (isRightDown) {
-                            tiles[i + 1][j + 1] = tileBelow;
-                        }
-                        let isMidDown = j < tiles[i].length - 1 && tiles[i][j + 1] !== tileCurrent
-                            && tiles[i][j + 1] !== tileAbove && tiles[i][j + 1] !== tileBelow;
-                        if (isMidDown) {
-                            tiles[i][j + 1] = tileBelow;
-                        }
-                        let isLeftDown = i > 0 && j < tiles[i].length - 1 && tiles[i - 1][j + 1] !== tileCurrent
-                            && tiles[i - 1][j + 1] !== tileAbove && tiles[i - 1][j + 1] !== tileBelow;
-                        if (isLeftDown) {
-                            tiles[i - 1][j + 1] = tileBelow;
-                        }
-                        let isLeftMid = i > 0 && tiles[i - 1][j] !== tileCurrent
-                            && tiles[i - 1][j] !== tileAbove && tiles[i - 1][j] !== tileBelow;
-                        if (isLeftMid) {
-                            tiles[i - 1][j] = tileBelow;
-                        }
-                    }
-                }
-            }
+    public generateRightOf(chunk: MapChunk, rand: Phaser.RandomDataGenerator, configuration: Configuration, x: number, y: number) {
+        let initTiles = null;
+        if (chunk !== null) {
+            let generator = new NeighbourTilesGenerator();
+            let debug = new TilesDebugger();
+            console.log('previous chunk');
+            debug.display(chunk.getSmoothTiles());
+            initTiles = generator.generate(chunk.getSmoothTiles(), Directions.RIGHT);
         }
 
-        return tiles;
+        return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
     }
+
+    public generateTopOf(chunk: MapChunk, rand: Phaser.RandomDataGenerator, configuration: Configuration, x: number, y: number) {
+        let initTiles = null;
+        if (chunk !== null) {
+            let generator = new NeighbourTilesGenerator();
+            let debug = new TilesDebugger();
+            console.log('previous chunk');
+            debug.display(chunk.getSmoothTiles());
+            initTiles = generator.generate(chunk.getSmoothTiles(), Directions.TOP);
+        }
+
+        return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
+    }
+
+    public generateBottomOf(chunk: MapChunk, rand: Phaser.RandomDataGenerator, configuration: Configuration, x: number, y: number) {
+        let initTiles = null;
+        if (chunk !== null) {
+            let generator = new NeighbourTilesGenerator();
+            let debug = new TilesDebugger();
+            console.log('previous chunk');
+            debug.display(chunk.getSmoothTiles());
+            initTiles = generator.generate(chunk.getSmoothTiles(), Directions.BOTTOM);
+        }
+
+        return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
+    }
+
+    private generateFromInitTiles (
+        rand: Phaser.RandomDataGenerator,
+        configuration: Configuration,
+        x: number,
+        y: number,
+        initCells: Array<Array<number>>
+    ) {
+
+        let debug = new TilesDebugger();
+
+        let baseTilesGenerator = new BaseTilesGenerator(rand);
+        let baseTiles = baseTilesGenerator.generate(
+            configuration.getMapWidthInTiles(),
+            configuration.getMapHeightInTiles(),
+            initCells
+        );
+
+        let smoothTilesGenerator = new SmoothTilesGenerator();
+        let smoothTiles = smoothTilesGenerator.generate(baseTiles);
+
+        if (initCells !== null) {
+            console.log('smooth');
+            debug.display(smoothTiles);
+        }
+
+        let randState = rand.state();
+        let tilesGenerator = new FinalTilesGenerator();
+        let finalTiles = tilesGenerator.generate(smoothTiles);
+
+        return new MapChunk(baseTiles, smoothTiles, finalTiles, randState, x, y);
+    }
+}
+
+/**
+ * Generates a map of clean tiles, with clean ground transitions, rounded borders, etc
+ *
+ * Huge Thx to Chmood who inspirates this generator https://github.com/Chmood/shmup/blob/gh-pages/src/js/game.js
+ */
+class FinalTilesGenerator {
 
     /**
      * Detect ground differences and corners to replace base tiles by rounded tiles
      * @param tiles
      * @returns {Array}
      */
-    private roundTiles(tiles: Array<Array<number>>) {
-
+    public generate(tiles: Array<Array<number>>) {
         let roundedTiles = [];
-        for (let i = 0; i < tiles.length - 1; i++) {
+        for (let i = 0; i < tiles.length; i++) {
             roundedTiles[i] = [];
         }
 
-        for (let n = 1; n < this.TILE_STACK.length; n++) {
-            let currentLayer = this.TILE_STACK[n];
-            let upperLayer = this.TILE_STACK[n - 1];
+        for (let n = 1; n < Tiles.STACK.length; n++) {
+            let currentLayer = Tiles.STACK[n];
+            let upperLayer = Tiles.STACK[n - 1];
 
-            for (let i = 0; i < tiles.length - 1; i++) {
-                for (let j = 0; j < tiles[i].length - 1; j++) {
+            for (let i = 0; i < tiles.length; i++) {
+                for (let j = 0; j < tiles[i].length; j++) {
+
+                    // copy last tiles TODO generate one more and drop it cause we can't smooth those???
+                    if (i === tiles.length - 1 || j === tiles[i].length - 1) {
+                        roundedTiles[i][j] = tiles[i][j];
+                        continue;
+                    }
+
                     let q = [[tiles[i][j], tiles[i + 1][j]], [tiles[i][j + 1], tiles[i + 1][j + 1]]];
 
                     // 4 corners
@@ -300,89 +338,256 @@ class TerrainTileMapGenerator {
 }
 
 /**
- * Procedural map generator using cellular automata
+ * Generates neighbour tiles, to ensure that we can generate a new chunk with relevant tiles raccording the
+ * next chunk, for instance, if the right side of a chunk contains forest, be sure that the left side of the next
+ * chunk contains forrests too
+ */
+class NeighbourTilesGenerator {
+
+    public generate(originalTiles: Array<Array<number>>, direction: number) {
+        if (direction === Directions.RIGHT) {
+            return this.copyRightTiles(originalTiles);
+        } else if (direction === Directions.LEFT) {
+            return this.copyLeftTiles(originalTiles);
+        } else if (direction === Directions.TOP) {
+            return this.copyTopTiles(originalTiles);
+        } else if (direction === Directions.BOTTOM) {
+            return this.copyBottomTiles(originalTiles);
+        }
+    }
+
+    /**
+     * Copy right original tiles to left neighbour tiles
+     */
+    public copyRightTiles(originalTiles: Array<Array<number>>) {
+        let neighbourTiles = this.buildEmptyTiles(originalTiles);
+        let sourceColumnIndex = neighbourTiles.length - 1;
+        let copyColumnIndex = 0;
+        for (let row = 0; row < neighbourTiles[sourceColumnIndex].length; row++) {
+            neighbourTiles[copyColumnIndex][row] = originalTiles[sourceColumnIndex][row];
+        }
+
+        return neighbourTiles;
+    }
+
+    /**
+     * Copy left original tiles to right neighbour tiles
+     */
+    public copyLeftTiles(originalTiles: Array<Array<number>>) {
+        let neighbourTiles = this.buildEmptyTiles(originalTiles);
+        let sourceColumnIndex = 0;
+        let copyColumnIndex = neighbourTiles.length - 1;
+        for (let row = 0; row < neighbourTiles[sourceColumnIndex].length; row++) {
+            neighbourTiles[copyColumnIndex][row] = originalTiles[sourceColumnIndex][row];
+        }
+
+        return neighbourTiles;
+    }
+
+    /**
+     * Copy top original tiles to bottom neighbour tiles
+     */
+    public copyTopTiles(originalTiles: Array<Array<number>>) {
+        let neighbourTiles = this.buildEmptyTiles(originalTiles);
+        let sourceRowIndex = 0;
+        let copyRowIndex = neighbourTiles[0].length - 1;
+
+        for (let column = 0; column < neighbourTiles.length; column++) {
+            neighbourTiles[column][copyRowIndex] = originalTiles[column][sourceRowIndex];
+        }
+
+        return neighbourTiles;
+    }
+
+    /**
+     * Copy bottom original tiles to top neighbour tiles
+     */
+    public copyBottomTiles(originalTiles: Array<Array<number>>) {
+        let neighbourTiles = this.buildEmptyTiles(originalTiles);
+        let sourceRowIndex = neighbourTiles[0].length - 1;
+        let copyRowIndex = 0;
+
+        for (let column = 0; column < neighbourTiles.length; column++) {
+            neighbourTiles[column][copyRowIndex] = originalTiles[column][sourceRowIndex];
+        }
+
+        return neighbourTiles;
+    }
+
+    public buildEmptyTiles(originalTiles: Array<Array<number>>) {
+        let emptyTiles = new Array();
+        for (let row = 0; row < originalTiles.length; row++) {
+            emptyTiles[row] = [];
+            for (let column = 0; column < originalTiles[row].length; column++) {
+                emptyTiles[row][column] = Tiles.UNDEFINED;
+            }
+         }
+        return emptyTiles;
+    }
+}
+
+/**
+ * Erase difference between tile layer, for instance, it means that forrest can touch sand but not water, sand can
+ * touch water but not deep water, etc
+ */
+class SmoothTilesGenerator {
+
+    public generate(tiles: Array<Array<number>>) {
+        for (let n = 0; n < Tiles.STACK.length - 1; n++) {
+
+            let tileCurrent = Tiles.STACK[n];
+            let tileAbove = (n > 0) ? Tiles.STACK[n - 1] :  -1;
+            let tileBelow =  Tiles.STACK[n + 1];
+
+            for (let i = 0; i < tiles.length ; i++) {
+                for (let j = 0; j < tiles[i].length; j++) {
+                    if (tiles[i][j] === tileCurrent) {
+                        let isLeftUp = i > 0 && j > 0 && tiles[i - 1][j - 1] !== tileCurrent
+                            && tiles[i - 1][j - 1] !== tileAbove && tiles[i - 1][j - 1] !== tileBelow;
+                        if (isLeftUp) {
+                            tiles[i - 1][j - 1] = tileBelow;
+                        }
+                        let isMidUp = j > 0 && tiles[i][j - 1] !== tileCurrent && tiles[i][j - 1] !== tileAbove
+                            && tiles[i][j - 1] !== tileBelow;
+                        if (isMidUp) {
+                            tiles[i][j - 1] = tileBelow;
+                        }
+                        let isRightUp = i < tiles.length - 1 && j > 0 && tiles[i + 1][j - 1] !== tileCurrent
+                            && tiles[i + 1][j - 1] !== tileAbove && tiles[i + 1][j - 1] !== tileBelow;
+                        if (isRightUp) {
+                            tiles[i + 1][j - 1] = tileBelow;
+                        }
+                        let isRightMid = i < tiles.length - 1 && tiles[i + 1][j] !== tileCurrent
+                            && tiles[i + 1][j] !== tileAbove && tiles[i + 1][j] !== tileBelow;
+                        if (isRightMid) {
+                            tiles[i + 1][j] = tileBelow;
+                        }
+                        let isRightDown = i < tiles.length - 1 && j < tiles[i].length - 1
+                            && tiles[i + 1][j + 1] !== tileCurrent && tiles[i + 1][j + 1] !== tileAbove
+                            && tiles[i + 1][j + 1] !== tileBelow;
+                        if (isRightDown) {
+                            tiles[i + 1][j + 1] = tileBelow;
+                        }
+                        let isMidDown = j < tiles[i].length - 1 && tiles[i][j + 1] !== tileCurrent
+                            && tiles[i][j + 1] !== tileAbove && tiles[i][j + 1] !== tileBelow;
+                        if (isMidDown) {
+                            tiles[i][j + 1] = tileBelow;
+                        }
+                        let isLeftDown = i > 0 && j < tiles[i].length - 1 && tiles[i - 1][j + 1] !== tileCurrent
+                            && tiles[i - 1][j + 1] !== tileAbove && tiles[i - 1][j + 1] !== tileBelow;
+                        if (isLeftDown) {
+                            tiles[i - 1][j + 1] = tileBelow;
+                        }
+                        let isLeftMid = i > 0 && tiles[i - 1][j] !== tileCurrent
+                            && tiles[i - 1][j] !== tileAbove && tiles[i - 1][j] !== tileBelow;
+                        if (isLeftMid) {
+                            tiles[i - 1][j] = tileBelow;
+                        }
+                    }
+                }
+            }
+        }
+
+        return tiles;
+    }
+}
+
+/**
+ * Procedural tiles map generator using cellular automata, it only uses base tiles (forrest, sand, water, deep water)
  *
  * @see https://en.wikipedia.org/wiki/Cellular_automaton
  * @see https://gamedevelopment.tutsplus.com/tutorials/generate-random-cave-levels-using-cellular-automata--gamedev-9664
  * @see http://fiddle.jshell.net/neuroflux/qpnf32fu/
  */
-class CellularAutomataMapGenerator {
+class BaseTilesGenerator {
 
-    public STATE_DEATH: number = 0;
-    public STATE_ALIVE_ONE: number = 1;
-    public STATE_ALIVE_TWO: number = 2;
-    public STATE_ALIVE_THREE: number = 3;
+    public STATE_DEATH: number = Tiles.FORREST;
+    public STATE_ALIVE_ONE: number = Tiles.SAND;
+    public STATE_ALIVE_TWO: number = Tiles.WATER;
+    public STATE_ALIVE_THREE: number = Tiles.DEEP_WATER;
     private rand: Phaser.RandomDataGenerator;
 
     constructor (rand: Phaser.RandomDataGenerator) {
         this.rand = rand;
     }
 
-    public generate(width: number, height: number) {
+    public generate(width: number, height: number, initCells: Array<Array<number>>) {
         let chanceToStartAlive = 4;
-        let numberOfSteps = 3;
+        let numberOfSteps = 2;
         let deathLimit = 3;
         let birthLimit = 4;
-        let cells = this.initialize(width, height, chanceToStartAlive);
-        for (let i = 0; i < numberOfSteps; i++) {
-            cells = this.doSimulationStep(cells, deathLimit, birthLimit);
+        let baseTiles = this.initialize(width, height, chanceToStartAlive, initCells);
+        let debug = new TilesDebugger();
+        if (initCells !== null) {
+            console.log('init cells');
+            debug.display(baseTiles);
         }
 
-        return cells;
+        for (let i = 0; i < numberOfSteps; i++) {
+            baseTiles = this.doSimulationStep(baseTiles, deathLimit, birthLimit);
+            if (initCells !== null) {
+                console.log('init cells next step');
+                debug.display(baseTiles);
+            }
+        }
+
+        return baseTiles;
     }
 
-    private initialize(width: number, height: number, chanceToStartAlive: number) {
-        let cells = [[]];
+    private initialize(width: number, height: number, chanceToStartAlive: number, initCells: Array<Array<number>>) {
+        let baseTiles = [[]];
         for (let x = 0; x < width; x++) {
-            cells[x] = [];
+            baseTiles[x] = [];
             for (let y = 0; y < height; y++) {
-                if (this.rand.between(1, 10) < chanceToStartAlive) {
-                    cells[x][y] = (this.rand.between(1, 10) < 3) ?
+                if (initCells !== null && initCells[x][y] >= 0) {
+                    baseTiles[x][y] = initCells[x][y];
+                } else if (this.rand.between(1, 10) < chanceToStartAlive) {
+                    baseTiles[x][y] = (this.rand.between(1, 10) < 3) ?
                         this.STATE_ALIVE_ONE : (this.rand.between(1, 10) < 5) ?
                         this.STATE_ALIVE_TWO : this.STATE_ALIVE_THREE;
                 } else {
-                    cells[x][y] = this.STATE_DEATH;
+                    baseTiles[x][y] = this.STATE_DEATH;
                 }
             }
         }
 
-        return cells;
+        return baseTiles;
     }
 
-    private doSimulationStep (cells: Array<Array<number>>, deathLimit: number, birthLimit: number) {
-        let newCells = [[]];
-        for (let x = 0; x < cells.length; x++) {
-            newCells[x] = [];
-            for (let y = 0; y < cells[0].length; y++) {
-                let nbs = this.countAliveNeighbours(cells, x, y);
-                if (cells[x][y] > this.STATE_DEATH) {
+    private doSimulationStep (baseTiles: Array<Array<number>>, deathLimit: number, birthLimit: number) {
+        let newTiles = [[]];
+        for (let x = 0; x < baseTiles.length; x++) {
+            newTiles[x] = [];
+            for (let y = 0; y < baseTiles[0].length; y++) {
+                let nbs = this.countAliveNeighbours(baseTiles, x, y);
+                if (baseTiles[x][y] > this.STATE_DEATH) {
                     if (nbs < deathLimit) {
-                        newCells[x][y] = this.STATE_DEATH;
+                        newTiles[x][y] = this.STATE_DEATH;
                     } else {
-                        newCells[x][y] = this.getDominantNeighbourActiveState(cells, x, y);
+                        newTiles[x][y] = this.getDominantNeighbourActiveState(baseTiles, x, y);
                     }
                 } else {
                     if (nbs > birthLimit) {
-                        newCells[x][y] = this.getDominantNeighbourActiveState(cells, x, y);
+                        newTiles[x][y] = this.getDominantNeighbourActiveState(baseTiles, x, y);
                     } else {
-                        newCells[x][y] = this.STATE_DEATH;
+                        newTiles[x][y] = this.STATE_DEATH;
                     }
                 }
             }
         }
 
-        return newCells;
+        return newTiles;
     }
 
-    private countAliveNeighbours(cells: Array<Array<number>>, x, y) {
+    private countAliveNeighbours(baseTiles: Array<Array<number>>, x, y) {
         let count = 0;
         for (let i = -1; i < 2; i++) {
             for (let j = -1; j < 2; j++) {
                 let nbX = i + x;
                 let nbY = j + y;
-                if (nbX < 0 || nbY < 0 || nbX >= cells.length || nbY >= cells[0].length) {
+                if (nbX < 0 || nbY < 0 || nbX >= baseTiles.length || nbY >= baseTiles[0].length) {
                     count = count + 1;
-                } else if (cells[nbX][nbY] > this.STATE_DEATH) {
+                } else if (baseTiles[nbX][nbY] > this.STATE_DEATH) {
                     count = count + 1;
                 }
             }
@@ -391,7 +596,7 @@ class CellularAutomataMapGenerator {
         return count;
     }
 
-    private getDominantNeighbourActiveState(cells: Array<Array<number>>, x, y) {
+    private getDominantNeighbourActiveState(baseTiles: Array<Array<number>>, x, y) {
         let counterAliveOne = 0;
         let counterAliveTwo = 0;
         let counterAliveThree = 0;
@@ -400,24 +605,73 @@ class CellularAutomataMapGenerator {
             for (let j = -1; j < 2; j++) {
                 let nbX = i + x;
                 let nbY = j + y;
-                if (nbX < 0 || nbY < 0 || nbX >= cells.length || nbY >= cells[0].length) {
+                if (nbX < 0 || nbY < 0 || nbX >= baseTiles.length || nbY >= baseTiles[0].length) {
                     continue;
-                } else if (cells[nbX][nbY] === this.STATE_ALIVE_ONE) {
+                } else if (baseTiles[nbX][nbY] === this.STATE_ALIVE_ONE) {
                     counterAliveOne = counterAliveOne + 1;
-                } else if (cells[nbX][nbY] === this.STATE_ALIVE_TWO) {
+                } else if (baseTiles[nbX][nbY] === this.STATE_ALIVE_TWO) {
                     counterAliveTwo = counterAliveTwo + 1;
-                } else if (cells[nbX][nbY] === this.STATE_ALIVE_THREE) {
+                } else if (baseTiles[nbX][nbY] === this.STATE_ALIVE_THREE) {
                     counterAliveThree = counterAliveThree + 1;
                 }
             }
         }
 
         if (counterAliveOne > counterAliveTwo && counterAliveOne > counterAliveThree) {
-            return this.STATE_ALIVE_THREE;
+            return this.STATE_ALIVE_ONE;
         } else if (counterAliveTwo > counterAliveOne && counterAliveTwo > counterAliveThree) {
             return this.STATE_ALIVE_TWO;
         } else {
             return this.STATE_ALIVE_THREE;
         }
+    }
+}
+
+/**
+ * Allow to access base tiles (forrest, sand, water, deep water) and to the stack, aka, in which order you can
+ * encounter them, forrest can touch sand but not water or deep water, sand can touch forrest or water, etc
+ */
+class Tiles {
+    public static UNDEFINED: number = -1;
+    public static FORREST: number = 6;
+    public static SAND: number = 6 + 15 * 1;
+    public static WATER: number = 6 + 15 * 2;
+    public static DEEP_WATER: number = 6 + 15 * 3;
+    public static STACK: Array<number> = [Tiles.FORREST, Tiles.SAND, Tiles.WATER, Tiles.DEEP_WATER];
+}
+
+/**
+ * Defines constant for different directions
+ */
+class Directions {
+    public static LEFT: number = 1;
+    public static RIGHT: number = 2;
+    public static TOP: number = 3;
+    public static BOTTOM: number = 4;
+}
+
+/**
+ * Display the tiles in the log
+ */
+class TilesDebugger {
+    public display(tiles: Array<Array<number>>) {
+
+        let rowsString = [];
+        for (let row = 0; row < tiles[0].length; row++) {
+            rowsString[row] = "";
+        }
+
+        for (let column = 0; column < tiles.length; column++) {
+            for (let row = 0; row < tiles[column].length; row++) {
+                rowsString[row] = rowsString[row] + "\t" + tiles[column][row]
+            }
+        }
+
+        let strMap = "";
+        for (let row = 0; row < rowsString.length; row++) {
+            strMap = strMap + rowsString[row] + "\n";
+        }
+
+        console.log(strMap);
     }
 }
