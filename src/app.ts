@@ -2,6 +2,7 @@
 
 import Configuration from "./Configuration";
 import {MapChunkRegistry, MapChunk} from "./MapGenerator";
+import {PlayerShip} from "./Ship";
 
 class SimpleGame {
     private game: Phaser.Game;
@@ -28,7 +29,9 @@ class SimpleGame {
     public preload() {
         this.game.load.image("tileset", "assets/tileset_debug.png");
         this.game.load.image("stars", "assets/starfield.jpg");
-        this.game.load.image("ship", "assets/thrust_ship2.png");
+        //this.game.load.image("ship", "assets/thrust_ship2.png");
+        //this.game.load.image("ship", "assets/player_ship_4.png");
+        this.game.load.spritesheet('ship', 'assets/player_ship_1.png', 24, 28);
     }
 
     public create() {
@@ -102,6 +105,7 @@ class SimpleGame {
             this.configuration.getMapChunkHeight() / 2,
             "ship"
         );
+
         playerSprite.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
         this.game.physics.p2.enable(playerSprite);
         this.game.camera.follow(playerSprite);
@@ -133,77 +137,6 @@ class SimpleGame {
         painter.paint(this.map, this.layer, tiles);
 
         return this.layer;
-    }
-}
-
-interface IShip {
-    move();
-}
-
-class PlayerShip implements IShip {
-    private sprite: Phaser.Sprite;
-    private cursors: Phaser.CursorKeys;
-    private controller: VelocityController;
-
-    constructor (sprite: Phaser.Sprite, cursors: Phaser.CursorKeys) {
-        this.sprite = sprite;
-        this.cursors = cursors;
-        this.controller = new VelocityController();
-    }
-
-    public move () {
-        if (this.cursors.left.isDown) {
-            this.sprite.body.rotateLeft(100);
-        } else if (this.cursors.right.isDown) {
-            this.sprite.body.rotateRight(100);
-        } else {
-            this.sprite.body.setZeroRotation();
-        }
-
-        if (this.cursors.up.isDown) {
-            this.sprite.body.thrust(400);
-        } else if (this.cursors.down.isDown) {
-            this.sprite.body.reverse(100);
-        }
-
-        this.controller.limitVelocity(this.sprite, 15);
-    }
-
-    public getX() {
-        return this.sprite.x;
-    }
-
-    public getY() {
-        return this.sprite.y;
-    }
-
-    public reset(x: number, y: number) {
-        this.sprite.body.x = x;
-        this.sprite.body.y = y;
-    }
-
-    public bringToTop() {
-        this.sprite.bringToTop();
-    }
-}
-
-/**
- * Controls and limits the velocity of a sprite
- * @see http://www.html5gamedevs.com/topic/4723-p2-physics-limit-the-speed-of-a-sprite/
- */
-class VelocityController {
-    public limitVelocity(sprite: Phaser.Sprite, maxVelocity: number) {
-        let body = sprite.body
-        let vx = body.data.velocity[0];
-        let vy = body.data.velocity[1];
-        let currVelocitySqr = vx * vx + vy * vy;
-        let angle = Math.atan2(vy, vx);
-        if (currVelocitySqr > maxVelocity * maxVelocity) {
-            vx = Math.cos(angle) * maxVelocity;
-            vy = Math.sin(angle) * maxVelocity;
-            body.data.velocity[0] = vx;
-            body.data.velocity[1] = vy;
-        }
     }
 }
 
