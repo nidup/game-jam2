@@ -13,8 +13,6 @@ class SimpleGame {
     private layer: Phaser.TilemapLayer = null;
     private generating: boolean = false;
 
-    private nextLayer: Phaser.TilemapLayer = null;
-
     constructor(config: Configuration) {
         this.configuration = config;
         this.game = new Phaser.Game(
@@ -41,8 +39,8 @@ class SimpleGame {
 
         this.ship.move();
 
-        let borderLeft = this.configuration.getEmptyWidth() * 2;
-        let borderTop = this.configuration.getEmptyHeight() * 2;
+        let borderLeft = this.configuration.getEmptyWidth();
+        let borderTop = this.configuration.getEmptyHeight();
         let borderRight = this.configuration.getMapChunkWidth() - this.configuration.getEmptyWidth();
         let borderBottom = this.configuration.getMapChunkHeight() - this.configuration.getEmptyHeight();
 
@@ -73,8 +71,9 @@ class SimpleGame {
             this.repaintCurrentChunk();
             this.ship.reset(this.ship.getX(), borderBottom);
             this.generating = false;
-
         }
+
+        // TODO: set a timer to pre-generate upcoming chunks to reduce the lag effect (only repaint)
     }
 
     public render() {
@@ -136,7 +135,7 @@ class SimpleGame {
 
         let tiles = this.currentChunk.getFinalTiles();
         let painter = new TilemapPainter();
-        painter.paint(this.configuration, this.map, this.layer, tiles);
+        painter.paint(this.map, this.layer, tiles);
 
         return this.layer;
     }
@@ -218,16 +217,14 @@ class VelocityController {
  * allow to always keep the player centered in the screen
  */
 class TilemapPainter {
-    public paint (configuration: Configuration, map: Phaser.Tilemap, layer: Phaser.TilemapLayer, tiles: Array<Array<number>>) {
+    public paint(map: Phaser.Tilemap, layer: Phaser.TilemapLayer, tiles: Array<Array<number>>) {
 
         let nbColumns = tiles.length;
         let nbRows = tiles[0].length;
-        let nbEmptyColumns = configuration.getEmptyWidthInTiles();
-        let nbEmptyRows = configuration.getEmptyHeightInTiles();
 
         for (let column = 0; column < nbColumns; column++) {
             for (let row = 0; row < nbRows; row++) {
-                map.putTile(tiles[column][row], column + nbEmptyColumns, row + nbEmptyRows, layer);
+                map.putTile(tiles[column][row], column, row, layer);
             }
         }
     }

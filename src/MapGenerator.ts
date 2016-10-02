@@ -165,11 +165,8 @@ class MapChunkGenerator {
     public generateLeftOf(chunk: MapChunk, rand: Phaser.RandomDataGenerator, configuration: Configuration, x: number, y: number) {
         let initTiles = null;
         if (chunk !== null) {
-            let generator = new NeighbourTilesGenerator();
-            let debug = new TilesDebugger();
-            //console.log('previous chunk');
-            //debug.display(chunk.getSmoothTiles());
-            initTiles = generator.generate(chunk.getSmoothTiles(), Directions.LEFT);
+            let copier = new NeighbourTilesCopier();
+            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.LEFT, configuration.getGameWidthInTiles());
         }
 
         return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
@@ -178,11 +175,8 @@ class MapChunkGenerator {
     public generateRightOf(chunk: MapChunk, rand: Phaser.RandomDataGenerator, configuration: Configuration, x: number, y: number) {
         let initTiles = null;
         if (chunk !== null) {
-            let generator = new NeighbourTilesGenerator();
-            let debug = new TilesDebugger();
-            //console.log('previous chunk');
-            //debug.display(chunk.getSmoothTiles());
-            initTiles = generator.generate(chunk.getSmoothTiles(), Directions.RIGHT);
+            let copier = new NeighbourTilesCopier();
+            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.RIGHT, configuration.getGameWidthInTiles());
         }
 
         return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
@@ -191,11 +185,8 @@ class MapChunkGenerator {
     public generateTopOf(chunk: MapChunk, rand: Phaser.RandomDataGenerator, configuration: Configuration, x: number, y: number) {
         let initTiles = null;
         if (chunk !== null) {
-            let generator = new NeighbourTilesGenerator();
-            let debug = new TilesDebugger();
-            //console.log('previous chunk');
-            //debug.display(chunk.getSmoothTiles());
-            initTiles = generator.generate(chunk.getSmoothTiles(), Directions.TOP);
+            let copier = new NeighbourTilesCopier();
+            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.TOP, configuration.getGameHeightInTiles());
         }
 
         return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
@@ -204,11 +195,8 @@ class MapChunkGenerator {
     public generateBottomOf(chunk: MapChunk, rand: Phaser.RandomDataGenerator, configuration: Configuration, x: number, y: number) {
         let initTiles = null;
         if (chunk !== null) {
-            let generator = new NeighbourTilesGenerator();
-            let debug = new TilesDebugger();
-            //console.log('previous chunk');
-            //debug.display(chunk.getSmoothTiles());
-            initTiles = generator.generate(chunk.getSmoothTiles(), Directions.BOTTOM);
+            let copier = new NeighbourTilesCopier();
+            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.BOTTOM, configuration.getGameHeightInTiles());
         }
 
         return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
@@ -219,29 +207,26 @@ class MapChunkGenerator {
         configuration: Configuration,
         x: number,
         y: number,
-        initCells: Array<Array<number>>
+        initTiles: Array<Array<number>>
     ) {
-
-        let debug = new TilesDebugger();
-
         let baseTilesGenerator = new BaseTilesGenerator(rand);
         let baseTiles = baseTilesGenerator.generate(
             configuration.getMapChunkWidthInTiles(),
             configuration.getMapChunkHeightInTiles(),
-            initCells
+            initTiles
         );
 
+        // TODO fix chunk transition and optimize
+        // let smoothTiles = baseTiles;
         let smoothTilesGenerator = new SmoothTilesGenerator();
         let smoothTiles = smoothTilesGenerator.generate(baseTiles);
 
-        if (initCells !== null) {
-            //console.log('smooth');
-            //debug.display(smoothTiles);
-        }
-
-        let randState = rand.state();
+        // TODO fix chunk transition and optimize
+        // let finalTiles = smoothTiles;
         let tilesGenerator = new FinalTilesGenerator();
         let finalTiles = tilesGenerator.generate(smoothTiles);
+
+        let randState = rand.state();
 
         return new MapChunk(baseTiles, smoothTiles, finalTiles, randState, x, y);
     }
@@ -342,77 +327,95 @@ class FinalTilesGenerator {
 }
 
 /**
- * Generates neighbour tiles, to ensure that we can generate a new chunk with relevant tiles raccording the
- * next chunk, for instance, if the right side of a chunk contains forest, be sure that the left side of the next
- * chunk contains forrests too
+ * Copy neighbour tiles, to ensure that we can generate a new chunk with relevant tiles related to the next chunk,
+ * for instance, if the right side of a chunk contains forest, be sure that the left side of the next chunk contains
+ * forrest too
+ *
+ * TODO: still limited cause taking in account only a neighbour and not all existant neighbours, for instance,
+ * top and left
  */
-class NeighbourTilesGenerator {
+class NeighbourTilesCopier {
 
-    public generate(originalTiles: Array<Array<number>>, direction: number) {
+    public copy(originalTiles: Array<Array<number>>, direction: number, nbTilesToCopy: number) {
         if (direction === Directions.RIGHT) {
-            return this.copyRightTiles(originalTiles);
+            return this.copyRightTiles(originalTiles, nbTilesToCopy);
         } else if (direction === Directions.LEFT) {
-            return this.copyLeftTiles(originalTiles);
+            return this.copyLeftTiles(originalTiles, nbTilesToCopy);
         } else if (direction === Directions.TOP) {
-            return this.copyTopTiles(originalTiles);
+            return this.copyTopTiles(originalTiles, nbTilesToCopy);
         } else if (direction === Directions.BOTTOM) {
-            return this.copyBottomTiles(originalTiles);
+            return this.copyBottomTiles(originalTiles, nbTilesToCopy);
         }
     }
 
     /**
-     * Copy right original tiles to left neighbour tiles
+     * Copy nbTilesToCopy right original tiles to left neighbour tiles
      */
-    public copyRightTiles(originalTiles: Array<Array<number>>) {
+    public copyRightTiles(originalTiles: Array<Array<number>>, nbTilesToCopy: number) {
         let neighbourTiles = this.buildEmptyTiles(originalTiles);
         let sourceColumnIndex = neighbourTiles.length - 1;
         let copyColumnIndex = 0;
-        for (let row = 0; row < neighbourTiles[sourceColumnIndex].length; row++) {
-            neighbourTiles[copyColumnIndex][row] = originalTiles[sourceColumnIndex][row];
+        for (let row = 0; row < neighbourTiles[0].length; row++) {
+            let copySrc = nbTilesToCopy;
+            for (let copyDest = 0; copyDest < nbTilesToCopy; copyDest++) {
+                copySrc--;
+                neighbourTiles[copyColumnIndex + copyDest][row] = originalTiles[sourceColumnIndex - copySrc][row];
+            }
         }
 
         return neighbourTiles;
     }
 
     /**
-     * Copy left original tiles to right neighbour tiles
+     * Copy nbTilesToCopy left original tiles to right neighbour tiles
      */
-    public copyLeftTiles(originalTiles: Array<Array<number>>) {
+    public copyLeftTiles(originalTiles: Array<Array<number>>, nbTilesToCopy: number) {
         let neighbourTiles = this.buildEmptyTiles(originalTiles);
         let sourceColumnIndex = 0;
         let copyColumnIndex = neighbourTiles.length - 1;
         for (let row = 0; row < neighbourTiles[sourceColumnIndex].length; row++) {
-            neighbourTiles[copyColumnIndex][row] = originalTiles[sourceColumnIndex][row];
+            let copyDest = nbTilesToCopy;
+            for (let copySrc = 0; copySrc < nbTilesToCopy; copySrc++) {
+                copyDest--;
+                neighbourTiles[copyColumnIndex - copyDest][row] = originalTiles[sourceColumnIndex + copySrc][row];
+            }
         }
 
         return neighbourTiles;
     }
 
     /**
-     * Copy top original tiles to bottom neighbour tiles
+     * Copy nbTilesToCopy top original tiles to bottom neighbour tiles
      */
-    public copyTopTiles(originalTiles: Array<Array<number>>) {
+    public copyTopTiles(originalTiles: Array<Array<number>>, nbTilesToCopy: number) {
         let neighbourTiles = this.buildEmptyTiles(originalTiles);
         let sourceRowIndex = 0;
         let copyRowIndex = neighbourTiles[0].length - 1;
 
         for (let column = 0; column < neighbourTiles.length; column++) {
-            neighbourTiles[column][copyRowIndex] = originalTiles[column][sourceRowIndex];
+            let copyDest = nbTilesToCopy;
+            for (let copySrc = 0; copySrc < nbTilesToCopy; copySrc++) {
+                copyDest--;
+                neighbourTiles[column][copyRowIndex - copyDest] = originalTiles[column][sourceRowIndex + copySrc];
+            }
         }
 
         return neighbourTiles;
     }
 
     /**
-     * Copy bottom original tiles to top neighbour tiles
+     * Copy nbTilesToCopy bottom original tiles to top neighbour tiles
      */
-    public copyBottomTiles(originalTiles: Array<Array<number>>) {
+    public copyBottomTiles(originalTiles: Array<Array<number>>, nbTilesToCopy: number) {
         let neighbourTiles = this.buildEmptyTiles(originalTiles);
         let sourceRowIndex = neighbourTiles[0].length - 1;
         let copyRowIndex = 0;
-
         for (let column = 0; column < neighbourTiles.length; column++) {
-            neighbourTiles[column][copyRowIndex] = originalTiles[column][sourceRowIndex];
+            let copySrc = nbTilesToCopy;
+            for (let copyDest = 0; copyDest < nbTilesToCopy; copyDest++) {
+                copySrc--;
+                neighbourTiles[column][copyRowIndex + copyDest] = originalTiles[column][sourceRowIndex - copySrc];
+            }
         }
 
         return neighbourTiles;
@@ -497,7 +500,8 @@ class SmoothTilesGenerator {
 }
 
 /**
- * Procedural tiles map generator using cellular automata, it only uses base tiles (forrest, sand, water, deep water)
+ * Procedural tiles map generator using cellular automata, it only uses base tiles (forrest, sand, water, deep water),
+ * the passed init cells are kept and not updated to ensure smooth transitions between map chunks
  *
  * @see https://en.wikipedia.org/wiki/Cellular_automaton
  * @see https://gamedevelopment.tutsplus.com/tutorials/generate-random-cave-levels-using-cellular-automata--gamedev-9664
@@ -515,40 +519,36 @@ class BaseTilesGenerator {
         this.rand = rand;
     }
 
-    public generate(width: number, height: number, initCells: Array<Array<number>>) {
+    /**
+     * Generate new tiles and ensure that init tiles are kept to ensure smooth transitions between chunks
+     */
+    public generate(width: number, height: number, initTiles: Array<Array<number>>) {
         let chanceToStartAlive = 4;
         let numberOfSteps = 2;
         let deathLimit = 3;
         let birthLimit = 4;
-        let baseTiles = this.initialize(width, height, chanceToStartAlive, initCells);
-        let debug = new TilesDebugger();
-        if (initCells !== null) {
-            //console.log('init cells');
-            //debug.display(baseTiles);
-        }
-
-        // TODO: need to re-work this part to never replace init cell during generation to avoid to have weird
-        // map chunk transitions
+        let baseTiles = this.initialize(width, height, chanceToStartAlive);
 
         for (let i = 0; i < numberOfSteps; i++) {
             baseTiles = this.doSimulationStep(baseTiles, deathLimit, birthLimit);
-            if (initCells !== null) {
-                //console.log('init cells next step');
-                //debug.display(baseTiles);
-            }
+        }
+
+        if (initTiles !== null) {
+            baseTiles = this.copyInitTiles(baseTiles, initTiles);
         }
 
         return baseTiles;
     }
 
-    private initialize(width: number, height: number, chanceToStartAlive: number, initCells: Array<Array<number>>) {
+    /**
+     * Generate random tiles to fulfil the map
+     */
+    private initialize(width: number, height: number, chanceToStartAlive: number) {
         let baseTiles = [[]];
         for (let x = 0; x < width; x++) {
             baseTiles[x] = [];
             for (let y = 0; y < height; y++) {
-                if (initCells !== null && initCells[x][y] >= 0) {
-                    baseTiles[x][y] = initCells[x][y];
-                } else if (this.rand.between(1, 10) < chanceToStartAlive) {
+                if (this.rand.between(1, 10) < chanceToStartAlive) {
                     baseTiles[x][y] = (this.rand.between(1, 10) < 3) ?
                         this.STATE_ALIVE_ONE : (this.rand.between(1, 10) < 5) ?
                         this.STATE_ALIVE_TWO : this.STATE_ALIVE_THREE;
@@ -561,7 +561,10 @@ class BaseTilesGenerator {
         return baseTiles;
     }
 
-    private doSimulationStep (baseTiles: Array<Array<number>>, deathLimit: number, birthLimit: number) {
+    /**
+     * Change random tiles depending on neighbour tiles
+     */
+    private doSimulationStep(baseTiles: Array<Array<number>>, deathLimit: number, birthLimit: number) {
         let newTiles = [[]];
         for (let x = 0; x < baseTiles.length; x++) {
             newTiles[x] = [];
@@ -631,6 +634,21 @@ class BaseTilesGenerator {
         } else {
             return this.STATE_ALIVE_THREE;
         }
+    }
+
+    /**
+     * Copy init tiles to ensure smooth transition with neighboug chunk
+     */
+    private copyInitTiles(baseTiles: Array<Array<number>>, initTiles: Array<Array<number>>) {
+        for (let x = 0; x < baseTiles.length; x++) {
+            for (let y = 0; y < baseTiles[x].length; y++) {
+                if (initTiles !== null && initTiles[x][y] >= 0) {
+                    baseTiles[x][y] = initTiles[x][y];
+                }
+            }
+        }
+
+        return baseTiles;
     }
 }
 
