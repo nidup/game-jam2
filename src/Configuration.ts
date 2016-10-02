@@ -31,22 +31,6 @@ export default class Configuration {
         return 28;
     }
 
-    public getEmptyWidthInTiles() {
-        return this.getGameWidthInTiles() / 2;
-    }
-
-    public getEmptyHeightInTiles() {
-        return this.getGameHeightInTiles() / 2;
-    }
-
-    public getEmptyWidth() {
-        return this.getEmptyWidthInTiles() * this.getTileWidth() * this.getPixelRatio();
-    }
-
-    public getEmptyHeight() {
-        return this.getEmptyHeightInTiles() * this.getTileHeight() * this.getPixelRatio();
-    }
-
     public getMapChunkWidthInTiles() {
         return 40;
     }
@@ -61,5 +45,29 @@ export default class Configuration {
 
     public getMapChunkHeight() {
         return this.getMapChunkHeightInTiles() * this.getTileHeight() * this.getPixelRatio();
+    }
+
+    public getLeftBorder() {
+        return this.getEmptyWidthInTiles() * this.getTileWidth() * this.getPixelRatio();
+    }
+
+    public getRightBorder() {
+        return this.getMapChunkWidth() - this.getLeftBorder();
+    }
+
+    public getTopBorder() {
+        return this.getEmptyHeightInTiles() * this.getTileHeight() * this.getPixelRatio();
+    }
+
+    public getBottomBorder() {
+        return this.getMapChunkHeight() - this.getTopBorder();
+    }
+
+    private getEmptyWidthInTiles() {
+        return this.getGameWidthInTiles() / 2;
+    }
+
+    private getEmptyHeightInTiles() {
+        return this.getGameHeightInTiles() / 2;
     }
 }

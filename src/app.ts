@@ -26,7 +26,7 @@ class SimpleGame {
     }
 
     public preload() {
-        this.game.load.image("tileset", "assets/tileset.png");
+        this.game.load.image("tileset", "assets/tileset_debug.png");
         this.game.load.image("stars", "assets/starfield.jpg");
         this.game.load.image("ship", "assets/thrust_ship2.png");
     }
@@ -39,37 +39,32 @@ class SimpleGame {
 
         this.ship.move();
 
-        let borderLeft = this.configuration.getEmptyWidth();
-        let borderTop = this.configuration.getEmptyHeight();
-        let borderRight = this.configuration.getMapChunkWidth() - this.configuration.getEmptyWidth();
-        let borderBottom = this.configuration.getMapChunkHeight() - this.configuration.getEmptyHeight();
-
-        if (this.generating === false && this.ship.getX() > borderRight) {
+        if (this.generating === false && this.ship.getX() > this.configuration.getRightBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getRight(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(borderLeft, this.ship.getY());
+            this.ship.reset(this.configuration.getLeftBorder(), this.ship.getY());
             this.generating = false;
 
-        } else if (this.generating === false && this.ship.getX() < borderLeft) {
+        } else if (this.generating === false && this.ship.getX() < this.configuration.getLeftBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getLeft(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(borderRight, this.ship.getY());
+            this.ship.reset(this.configuration.getRightBorder(), this.ship.getY());
             this.generating = false;
 
-        } else if (this.generating === false && this.ship.getY() > borderBottom) {
+        } else if (this.generating === false && this.ship.getY() > this.configuration.getBottomBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getBottom(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(this.ship.getX(), borderTop);
+            this.ship.reset(this.ship.getX(), this.configuration.getTopBorder());
             this.generating = false;
 
-        } else if (this.generating === false && this.ship.getY() < borderTop) {
+        } else if (this.generating === false && this.ship.getY() < this.configuration.getTopBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getTop(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(this.ship.getX(), borderBottom);
+            this.ship.reset(this.ship.getX(), this.configuration.getBottomBorder());
             this.generating = false;
         }
 
