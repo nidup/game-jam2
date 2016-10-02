@@ -47,6 +47,14 @@ export default class Configuration {
         return this.getMapChunkHeightInTiles() * this.getTileHeight() * this.getPixelRatio();
     }
 
+    public getHorizontalTilesToCopy() {
+        return this.getGameWidthInTiles() + this.getPaddingInTiles();
+    }
+
+    public getVerticalTilesToCopy() {
+        return this.getGameHeightInTiles() + this.getPaddingInTiles();
+    }
+
     public getLeftBorder() {
         return this.getEmptyWidthInTiles() * this.getTileWidth() * this.getPixelRatio();
     }
@@ -64,10 +72,14 @@ export default class Configuration {
     }
 
     private getEmptyWidthInTiles() {
-        return this.getGameWidthInTiles() / 2;
+        return (this.getGameWidthInTiles() + this.getPaddingInTiles()) / 2;
     }
 
     private getEmptyHeightInTiles() {
-        return this.getGameHeightInTiles() / 2;
+        return (this.getGameHeightInTiles() + this.getPaddingInTiles()) / 2;
+    }
+
+    private getPaddingInTiles() {
+        return 4;
     }
 }

@@ -166,7 +166,7 @@ class MapChunkGenerator {
         let initTiles = null;
         if (chunk !== null) {
             let copier = new NeighbourTilesCopier();
-            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.LEFT, configuration.getGameWidthInTiles());
+            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.LEFT, configuration.getHorizontalTilesToCopy());
         }
 
         return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
@@ -176,7 +176,7 @@ class MapChunkGenerator {
         let initTiles = null;
         if (chunk !== null) {
             let copier = new NeighbourTilesCopier();
-            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.RIGHT, configuration.getGameWidthInTiles());
+            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.RIGHT, configuration.getHorizontalTilesToCopy());
         }
 
         return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
@@ -186,7 +186,7 @@ class MapChunkGenerator {
         let initTiles = null;
         if (chunk !== null) {
             let copier = new NeighbourTilesCopier();
-            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.TOP, configuration.getGameHeightInTiles());
+            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.TOP, configuration.getVerticalTilesToCopy());
         }
 
         return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
@@ -196,7 +196,7 @@ class MapChunkGenerator {
         let initTiles = null;
         if (chunk !== null) {
             let copier = new NeighbourTilesCopier();
-            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.BOTTOM, configuration.getGameHeightInTiles());
+            initTiles = copier.copy(chunk.getSmoothTiles(), Directions.BOTTOM, configuration.getVerticalTilesToCopy());
         }
 
         return this.generateFromInitTiles(rand, configuration, x, y, initTiles);
