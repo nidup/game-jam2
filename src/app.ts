@@ -74,12 +74,16 @@ class SimpleGame {
             this.ship.reset(this.ship.getX(), borderBottom);
             this.generating = false;
 
-        } else {
-            this.prepareNeighbourChunks();
         }
     }
 
+    public render() {
+        this.game.debug.text(this.game.time.fps + " " || "--", 2, 14, "#00ff00");
+    }
+
     private createWorld() {
+
+        this.game.time.advancedTiming = true;
 
         let cursors = this.game.input.keyboard.createCursorKeys();
 
@@ -112,48 +116,29 @@ class SimpleGame {
 
     private repaintCurrentChunk () {
         let newLayer = this.getLayer(this.currentChunk);
-
-        if (this.layer !== null) {
-            this.layer.destroy();
-        }
-        this.layer = newLayer;
-        if (this.ship !== null) {
-            this.ship.bringToTop();
-        }
     }
 
     private getLayer(chunk: MapChunk) {
-        let newLayer = this.map.create(
-            this.currentChunk.getRandState(),
-            this.configuration.getMapChunkWidthInTiles(),
-            this.configuration.getMapChunkHeightInTiles(),
-            this.configuration.getTileWidth(),
-            this.configuration.getTileHeight()
-        );
-        newLayer.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
+        if (this.layer === null) {
+            let newLayer = this.map.create(
+                this.currentChunk.getRandState(),
+                this.configuration.getMapChunkWidthInTiles(),
+                this.configuration.getMapChunkHeightInTiles(),
+                this.configuration.getTileWidth(),
+                this.configuration.getTileHeight()
+            );
+            newLayer.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
+            if (this.layer !== null) {
+                this.layer.destroy();
+            }
+            this.layer = newLayer;
+        }
 
         let tiles = this.currentChunk.getFinalTiles();
         let painter = new TilemapPainter();
-        painter.paint(this.configuration, this.map, newLayer, tiles);
+        painter.paint(this.configuration, this.map, this.layer, tiles);
 
-        return newLayer;
-    }
-
-    private prepareNeighbourChunks() {
-        if (this.nextLayer === null) {
-            let right = this.chunkRegistry.getRight(this.currentChunk);
-            //this.nextLayer = this.getLayer(right);
-            //this.layer.bringToTop();
-            /*
-            console.log(this.map.layers);
-            console.log(this.layer);
-            console.log(this.map.objects);
-            */
-        }
-
-
-
-        // this.chunkRegistry.getRight(this.currentChunk);
+        return this.layer;
     }
 }
 

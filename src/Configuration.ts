@@ -48,11 +48,11 @@ export default class Configuration {
     }
 
     public getMapChunkWidthInTiles() {
-        return 100;
+        return 40;
     }
 
     public getMapChunkHeightInTiles() {
-        return 100;
+        return 40;
     }
 
     public getMapChunkWidth() {
