@@ -27,11 +27,11 @@ class SimpleGame {
     }
 
     public preload() {
-        this.game.load.image("tileset", "assets/tileset_debug.png");
+        this.game.load.image("tileset", "assets/tileset.png");
         this.game.load.image("stars", "assets/starfield.jpg");
-        //this.game.load.image("ship", "assets/thrust_ship2.png");
-        //this.game.load.image("ship", "assets/player_ship_4.png");
-        this.game.load.spritesheet('ship', 'assets/player_ship_1.png', 24, 28);
+        this.game.load.spritesheet("ship", "assets/player_ship_1.png", 24, 28);
+        this.game.load.image("bullet", "assets/bullet.png");
+        this.game.load.spritesheet("explosion", "assets/explode.png", 128, 128);
     }
 
     public create() {
@@ -83,6 +83,7 @@ class SimpleGame {
         this.game.time.advancedTiming = true;
 
         let cursors = this.game.input.keyboard.createCursorKeys();
+        let fireButton = this.game.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR);
 
         this.game.world.setBounds(0, 0, this.configuration.getMapChunkWidth(), this.configuration.getMapChunkHeight());
 
@@ -100,6 +101,15 @@ class SimpleGame {
         this.currentChunk = this.chunkRegistry.getInitial();
         this.repaintCurrentChunk();
 
+        let bullets = this.game.add.group();
+        bullets.enableBody = true;
+        bullets.physicsBodyType = Phaser.Physics.ARCADE;
+        bullets.createMultiple(30, "bullet");
+        bullets.setAll("anchor.x", 0.5);
+        bullets.setAll("anchor.y", 1);
+        bullets.setAll("outOfBoundsKill", true);
+        bullets.setAll("checkWorldBounds", true);
+
         let playerSprite = this.game.add.sprite(
             this.configuration.getMapChunkWidth() / 2,
             this.configuration.getMapChunkHeight() / 2,
@@ -109,7 +119,16 @@ class SimpleGame {
         playerSprite.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
         this.game.physics.p2.enable(playerSprite);
         this.game.camera.follow(playerSprite);
-        this.ship = new PlayerShip(playerSprite, cursors);
+
+        let trail = this.game.add.emitter(playerSprite.x - 40, playerSprite.y, 1000);
+        trail.width = 10;
+        trail.makeParticles("explosion", [1, 2, 3, 4, 5]);
+        trail.setXSpeed(20, -20);
+        trail.setRotation(50, -50);
+        trail.setAlpha(0.4, 0, 800);
+        trail.setScale(0.01, 0.1, 0.01, 0.1, 1000, Phaser.Easing.Quintic.Out);
+
+        this.ship = new PlayerShip(playerSprite, cursors, this.game.time, bullets, fireButton, this.game.physics.arcade, trail);
     }
 
     private repaintCurrentChunk () {
@@ -160,5 +179,5 @@ class TilemapPainter {
 
 window.onload = () => {
     let configuration = new Configuration();
-    let game = new SimpleGame(configuration);
+    new SimpleGame(configuration);
 };

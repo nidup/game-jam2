@@ -6,11 +6,22 @@ interface IShip {
 export class PlayerShip implements IShip {
     private sprite: Phaser.Sprite;
     private cursors: Phaser.CursorKeys;
+    private fireButton: Phaser.Key;
     private controller: VelocityController;
+    private time: Phaser.Time;
+    private bullets: Phaser.Group;
+    private bulletTimer: number = 0;
+    private physics: Phaser.Physics.Arcade;
+    private trail: Phaser.Particles.Arcade.Emitter;
 
-    constructor (sprite: Phaser.Sprite, cursors: Phaser.CursorKeys) {
+    constructor (sprite: Phaser.Sprite, cursors: Phaser.CursorKeys, time: Phaser.Time, bullets: Phaser.Group, fireButton: Phaser.Key, physics: Phaser.Physics.Arcade, trail: Phaser.Particles.Arcade.Emitter) {
         this.sprite = sprite;
+        this.bullets = bullets;
         this.cursors = cursors;
+        this.fireButton = fireButton;
+        this.time = time;
+        this.physics = physics;
+        this.trail = trail;
         this.controller = new VelocityController();
 
         this.sprite.animations.add("left_full", [ 0 ], 5, true);
@@ -46,6 +57,28 @@ export class PlayerShip implements IShip {
             this.sprite.play("right");
         } else {
             this.sprite.play("idle");
+        }
+
+        if (this.fireButton.isDown) {
+            if (this.time.now > this.bulletTimer) {
+                let bulletSpeed = 400;
+                let bulletSpacing = 200;
+                let bullet = this.bullets.getFirstExists(false);
+                if (bullet) {
+                    let bulletOffset = 20;
+                    bullet.reset(this.sprite.x + bulletOffset, this.sprite.y);
+                    bullet.angle = this.sprite.angle;
+                    this.physics.velocityFromAngle(bullet.angle - 90, bulletSpeed, bullet.body.velocity);
+                    bullet.body.velocity.x += this.sprite.body.velocity.x;
+                    this.bulletTimer = this.time.now + bulletSpacing;
+                }
+            }
+        }
+
+        if (this.cursors.up.isDown) {
+            this.trail.x = this.sprite.x;
+            this.trail.y = this.sprite.y;
+            this.trail.start(false, 200, 10);
         }
 
         this.controller.limitVelocity(this.sprite, 15);
