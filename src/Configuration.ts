@@ -3,6 +3,10 @@
  */
 export default class Configuration {
 
+    public playWithGamePad() {
+        return false; // if false, the game will be playable with keyboard
+    }
+
     public getGameWidth() {
         return this.getTileWidth() * this.getGameWidthInTiles() * this.getPixelRatio();
     }

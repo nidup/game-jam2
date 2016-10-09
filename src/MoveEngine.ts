@@ -7,6 +7,7 @@ export interface IMoveEngine {
     isRotatingLeft();
     isRotatingRight();
     isNotRotating();
+    isShooting();
 }
 
 class States {
@@ -16,11 +17,14 @@ class States {
     public static NO_ACCELERATION: number = 0;
     public static ACCELERATION: number = 1;
     public static BRAKING: number = -1;
+    public static SHOOTING: number = 1;
+    public static NO_SHOOTING: number = 0;
 }
 
 abstract class AbstractMoveEngine implements IMoveEngine {
     protected rotation: number = States.NO_ROTATION;
     protected acceleration: number = States.NO_ACCELERATION;
+    protected shooting: number = States.NO_SHOOTING;
 
     public process() {
         // to implement
@@ -43,29 +47,40 @@ abstract class AbstractMoveEngine implements IMoveEngine {
     public isNotRotating() {
         return this.rotation === States.NO_ROTATION;
     }
+    public isShooting() {
+        return this.shooting === States.SHOOTING;
+    }
 }
 
 export class KeyboardMoveEngine extends AbstractMoveEngine {
-    private cursors: Phaser.CursorKeys;
+    private cursorKeys: Phaser.CursorKeys;
+    private shootingKey: Phaser.Key;
 
-    constructor (cursors: Phaser.CursorKeys) {
+    constructor (keyboard: Phaser.Keyboard) {
         super();
-        this.cursors = cursors;
+        this.cursorKeys = keyboard.createCursorKeys();
+        this.shootingKey = keyboard.addKey(Phaser.KeyCode.SPACEBAR);
     }
 
     public process() {
-        if (this.cursors.left.isDown) {
+        if (this.cursorKeys.left.isDown) {
             this.rotation = States.LEFT_ROTATION;
-        } else if (this.cursors.right.isDown) {
+        } else if (this.cursorKeys.right.isDown) {
             this.rotation = States.RIGHT_ROTATION;
         } else {
             this.rotation = States.NO_ROTATION;
         }
 
-        if (this.cursors.up.isDown) {
+        if (this.cursorKeys.up.isDown) {
             this.acceleration = States.ACCELERATION;
-        } else if (this.cursors.down.isDown) {
+        } else if (this.cursorKeys.down.isDown) {
             this.acceleration = States.BRAKING;
+        }
+
+        if (this.shootingKey.isDown) {
+            this.shooting = States.SHOOTING;
+        } else {
+            this.shooting = States.NO_SHOOTING;
         }
     }
 }
@@ -97,6 +112,16 @@ export class GamePadEngine  extends AbstractMoveEngine {
                      }
                  }
              },
+             onDown: function(buttonCode, value, padIndex){
+                 if (buttonCode === 3) {
+                     this.shooting = States.SHOOTING;
+                 }
+             },
+             onUp: function(buttonCode, value, padIndex){
+                if (buttonCode === 3) {
+                    this.shooting = States.NO_SHOOTING;
+                }
+            }
          });
     }
 

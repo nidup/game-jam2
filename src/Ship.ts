@@ -7,7 +7,6 @@ interface IShip {
 
 export class PlayerShip implements IShip {
     private sprite: Phaser.Sprite;
-    private fireButton: Phaser.Key;
     private controller: VelocityController;
     private time: Phaser.Time;
     private bullets: Phaser.Group;
@@ -16,10 +15,9 @@ export class PlayerShip implements IShip {
     private trail: Phaser.Particles.Arcade.Emitter;
     private moveEngine: IMoveEngine;
 
-    constructor (sprite: Phaser.Sprite, time: Phaser.Time, bullets: Phaser.Group, physics: Phaser.Physics.Arcade, trail: Phaser.Particles.Arcade.Emitter, fireButton: Phaser.Key, moveEngine: IMoveEngine) {
+    constructor (sprite: Phaser.Sprite, time: Phaser.Time, bullets: Phaser.Group, physics: Phaser.Physics.Arcade, trail: Phaser.Particles.Arcade.Emitter, moveEngine: IMoveEngine) {
         this.sprite = sprite;
         this.bullets = bullets;
-        this.fireButton = fireButton;
         this.time = time;
         this.physics = physics;
         this.trail = trail;
@@ -69,7 +67,7 @@ export class PlayerShip implements IShip {
             this.trail.start(false, 200, 10);
         }
 
-        if (this.fireButton.isDown) {
+        if (this.moveEngine.isShooting()) {
             if (this.time.now > this.bulletTimer) {
                 let bulletSpeed = 400;
                 let bulletSpacing = 200;
