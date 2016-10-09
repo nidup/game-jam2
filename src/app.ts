@@ -3,7 +3,7 @@
 import Configuration from "./Configuration";
 import {MapChunkRegistry, MapChunk} from "./MapGenerator";
 import {PlayerShip} from "./Ship";
-import {KeyboardMoveEngine, GamePadEngine} from "./MoveEngine";
+import {KeyboardControlEngine, GamePadControlEngine} from "./ControlEngine";
 
 class SimpleGame {
     private game: Phaser.Game;
@@ -130,9 +130,9 @@ class SimpleGame {
         if (this.configuration.playWithGamePad()) {
             let pad = this.game.input.gamepad.pad1;
             this.game.input.gamepad.start();
-            moveEngine = new GamePadEngine(pad);
+            moveEngine = new GamePadControlEngine(pad);
         } else {
-            moveEngine = new KeyboardMoveEngine(this.game.input.keyboard);
+            moveEngine = new KeyboardControlEngine(this.game.input.keyboard);
         }
 
         this.ship = new PlayerShip(playerSprite, this.game.time, bullets, this.game.physics.arcade, trail, moveEngine);

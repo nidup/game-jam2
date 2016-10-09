@@ -1,5 +1,5 @@
 
-export interface IMoveEngine {
+export interface IControlEngine {
     process();
     isAccelerating();
     isNotAccelerating();
@@ -21,7 +21,7 @@ class States {
     public static NO_SHOOTING: number = 0;
 }
 
-abstract class AbstractMoveEngine implements IMoveEngine {
+abstract class AbstractControlEngine implements IControlEngine {
     protected rotation: number = States.NO_ROTATION;
     protected acceleration: number = States.NO_ACCELERATION;
     protected shooting: number = States.NO_SHOOTING;
@@ -52,7 +52,7 @@ abstract class AbstractMoveEngine implements IMoveEngine {
     }
 }
 
-export class KeyboardMoveEngine extends AbstractMoveEngine {
+export class KeyboardControlEngine extends AbstractControlEngine {
     private cursorKeys: Phaser.CursorKeys;
     private shootingKey: Phaser.Key;
 
@@ -85,7 +85,7 @@ export class KeyboardMoveEngine extends AbstractMoveEngine {
     }
 }
 
-export class GamePadEngine  extends AbstractMoveEngine {
+export class GamePadControlEngine  extends AbstractControlEngine {
     private pad: Phaser.SinglePad;
 
     constructor (pad: Phaser.SinglePad) {

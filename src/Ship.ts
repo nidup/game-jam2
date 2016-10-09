@@ -1,5 +1,5 @@
 
-import {IMoveEngine} from "./MoveEngine";
+import {IControlEngine} from "./ControlEngine";
 
 interface IShip {
     move();
@@ -13,9 +13,9 @@ export class PlayerShip implements IShip {
     private bulletTimer: number = 0;
     private physics: Phaser.Physics.Arcade;
     private trail: Phaser.Particles.Arcade.Emitter;
-    private moveEngine: IMoveEngine;
+    private moveEngine: IControlEngine;
 
-    constructor (sprite: Phaser.Sprite, time: Phaser.Time, bullets: Phaser.Group, physics: Phaser.Physics.Arcade, trail: Phaser.Particles.Arcade.Emitter, moveEngine: IMoveEngine) {
+    constructor (sprite: Phaser.Sprite, time: Phaser.Time, bullets: Phaser.Group, physics: Phaser.Physics.Arcade, trail: Phaser.Particles.Arcade.Emitter, moveEngine: IControlEngine) {
         this.sprite = sprite;
         this.bullets = bullets;
         this.time = time;
