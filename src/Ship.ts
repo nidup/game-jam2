@@ -1,28 +1,29 @@
 
 import {IControlEngine} from "./ControlEngine";
+import {ShootingMachine} from "./ShootingMachine";
 
 interface IShip {
     move();
 }
 
-export class PlayerShip implements IShip {
+export class Ship implements IShip {
     private sprite: Phaser.Sprite;
     private controller: VelocityController;
-    private time: Phaser.Time;
-    private bullets: Phaser.Group;
-    private bulletTimer: number = 0;
-    private physics: Phaser.Physics.Arcade;
     private trail: Phaser.Particles.Arcade.Emitter;
-    private moveEngine: IControlEngine;
+    private controlEngine: IControlEngine;
+    private shootingMachine: ShootingMachine;
 
-    constructor (sprite: Phaser.Sprite, time: Phaser.Time, bullets: Phaser.Group, physics: Phaser.Physics.Arcade, trail: Phaser.Particles.Arcade.Emitter, moveEngine: IControlEngine) {
+    constructor (
+        sprite: Phaser.Sprite,
+        trail: Phaser.Particles.Arcade.Emitter,
+        controlEngine: IControlEngine,
+        shootingMachine: ShootingMachine
+    ) {
         this.sprite = sprite;
-        this.bullets = bullets;
-        this.time = time;
-        this.physics = physics;
         this.trail = trail;
-        this.moveEngine = moveEngine;
+        this.controlEngine = controlEngine;
         this.controller = new VelocityController();
+        this.shootingMachine = shootingMachine;
 
         this.sprite.animations.add("left_full", [ 0 ], 5, true);
         this.sprite.animations.add("left", [ 1 ], 5, true);
@@ -33,54 +34,42 @@ export class PlayerShip implements IShip {
 
     public move () {
 
-        this.moveEngine.process();
+        this.controlEngine.process();
 
-        if (this.moveEngine.isRotatingLeft()) {
+        if (this.controlEngine.isRotatingLeft()) {
             this.sprite.body.rotateLeft(100);
-        } else if (this.moveEngine.isRotatingRight()) {
+        } else if (this.controlEngine.isRotatingRight()) {
             this.sprite.body.rotateRight(100);
         } else {
             this.sprite.body.setZeroRotation();
         }
 
-        if (this.moveEngine.isAccelerating()) {
+        if (this.controlEngine.isAccelerating()) {
             this.sprite.body.thrust(400);
-        } else if (this.moveEngine.isBraking()) {
+        } else if (this.controlEngine.isBraking()) {
             this.sprite.body.reverse(100);
         }
 
-        if (this.moveEngine.isRotatingLeft() && this.moveEngine.isAccelerating()) {
+        if (this.controlEngine.isRotatingLeft() && this.controlEngine.isAccelerating()) {
             this.sprite.play("left_full");
-        } else if (this.moveEngine.isRotatingLeft()) {
+        } else if (this.controlEngine.isRotatingLeft()) {
             this.sprite.play("left");
-        } else if (this.moveEngine.isRotatingRight() && this.moveEngine.isAccelerating()) {
+        } else if (this.controlEngine.isRotatingRight() && this.controlEngine.isAccelerating()) {
             this.sprite.play("right_full");
-        } else if (this.moveEngine.isRotatingRight()) {
+        } else if (this.controlEngine.isRotatingRight()) {
             this.sprite.play("right");
         } else {
             this.sprite.play("idle");
         }
 
-        if (this.moveEngine.isAccelerating()) {
+        if (this.controlEngine.isAccelerating()) {
             this.trail.x = this.sprite.x;
             this.trail.y = this.sprite.y;
             this.trail.start(false, 200, 10);
         }
 
-        if (this.moveEngine.isShooting()) {
-            if (this.time.now > this.bulletTimer) {
-                let bulletSpeed = 400;
-                let bulletSpacing = 200;
-                let bullet = this.bullets.getFirstExists(false);
-                if (bullet) {
-                    let bulletOffset = 20;
-                    bullet.reset(this.sprite.x + bulletOffset, this.sprite.y);
-                    bullet.angle = this.sprite.angle;
-                    this.physics.velocityFromAngle(bullet.angle - 90, bulletSpeed, bullet.body.velocity);
-                    bullet.body.velocity.x += this.sprite.body.velocity.x;
-                    this.bulletTimer = this.time.now + bulletSpacing;
-                }
-            }
+        if (this.controlEngine.isShooting()) {
+            this.shootingMachine.shoot(this.sprite);
         }
 
         this.controller.limitVelocity(this.sprite, 15);

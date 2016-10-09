@@ -2,7 +2,8 @@
 
 import Configuration from "./Configuration";
 import {MapChunkRegistry, MapChunk} from "./MapGenerator";
-import {PlayerShip} from "./Ship";
+import {Ship} from "./Ship";
+import {ShipBuilder} from "./ShipBuilder";
 import {KeyboardControlEngine, GamePadControlEngine} from "./ControlEngine";
 
 class SimpleGame {
@@ -10,7 +11,7 @@ class SimpleGame {
     private configuration: Configuration;
     private chunkRegistry: MapChunkRegistry;
     private currentChunk: MapChunk;
-    private ship: PlayerShip = null;
+    private player: Ship = null;
     private map: Phaser.Tilemap = null;
     private layer: Phaser.TilemapLayer = null;
     private generating: boolean = false;
@@ -30,7 +31,10 @@ class SimpleGame {
     public preload() {
         this.game.load.image("tileset", "assets/tileset.png");
         this.game.load.image("stars", "assets/starfield.jpg");
-        this.game.load.spritesheet("ship", "assets/player_ship_1.png", 24, 28);
+        this.game.load.spritesheet("ship1", "assets/player_ship_1.png", 24, 28);
+        this.game.load.spritesheet("ship2", "assets/player_ship_2.png", 24, 28);
+        this.game.load.spritesheet("ship3", "assets/player_ship_3.png", 24, 28);
+        this.game.load.spritesheet("ship4", "assets/player_ship_4.png", 24, 28);
         this.game.load.image("bullet", "assets/bullet.png");
         this.game.load.spritesheet("explosion", "assets/explode.png", 128, 128);
     }
@@ -41,34 +45,34 @@ class SimpleGame {
 
     public update() {
 
-        this.ship.move();
+        this.player.move();
 
-        if (this.generating === false && this.ship.getX() > this.configuration.getRightBorder()) {
+        if (this.generating === false && this.player.getX() > this.configuration.getRightBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getRight(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(this.configuration.getLeftBorder(), this.ship.getY());
+            this.player.reset(this.configuration.getLeftBorder(), this.player.getY());
             this.generating = false;
 
-        } else if (this.generating === false && this.ship.getX() < this.configuration.getLeftBorder()) {
+        } else if (this.generating === false && this.player.getX() < this.configuration.getLeftBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getLeft(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(this.configuration.getRightBorder(), this.ship.getY());
+            this.player.reset(this.configuration.getRightBorder(), this.player.getY());
             this.generating = false;
 
-        } else if (this.generating === false && this.ship.getY() > this.configuration.getBottomBorder()) {
+        } else if (this.generating === false && this.player.getY() > this.configuration.getBottomBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getBottom(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(this.ship.getX(), this.configuration.getTopBorder());
+            this.player.reset(this.player.getX(), this.configuration.getTopBorder());
             this.generating = false;
 
-        } else if (this.generating === false && this.ship.getY() < this.configuration.getTopBorder()) {
+        } else if (this.generating === false && this.player.getY() < this.configuration.getTopBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getTop(this.currentChunk);
             this.repaintCurrentChunk();
-            this.ship.reset(this.ship.getX(), this.configuration.getBottomBorder());
+            this.player.reset(this.player.getX(), this.configuration.getBottomBorder());
             this.generating = false;
         }
 
@@ -99,44 +103,36 @@ class SimpleGame {
         this.currentChunk = this.chunkRegistry.getInitial();
         this.repaintCurrentChunk();
 
-        let bullets = this.game.add.group();
-        bullets.enableBody = true;
-        bullets.physicsBodyType = Phaser.Physics.ARCADE;
-        bullets.createMultiple(30, "bullet");
-        bullets.setAll("anchor.x", 0.5);
-        bullets.setAll("anchor.y", 1);
-        bullets.setAll("outOfBoundsKill", true);
-        bullets.setAll("checkWorldBounds", true);
+        this.buildPlayer();
+    }
 
-        let playerSprite = this.game.add.sprite(
+    private buildPlayer() {
+        let shipBuilder = new ShipBuilder();
+        let bullets = shipBuilder.buildBullets(this.game, "bullet");
+
+        let shipSprite = shipBuilder.buildSprite(
+            this.game,
+            "ship1",
             this.configuration.getMapChunkWidth() / 2,
             this.configuration.getMapChunkHeight() / 2,
-            "ship"
+            this.configuration.getPixelRatio()
         );
+        this.game.camera.follow(shipSprite);
 
-        playerSprite.scale.setTo(this.configuration.getPixelRatio(), this.configuration.getPixelRatio());
-        this.game.physics.p2.enable(playerSprite);
-        this.game.camera.follow(playerSprite);
+        let trail = shipBuilder.buildTrail(this.game, "explosion", shipSprite);
 
-        let trail = this.game.add.emitter(playerSprite.x - 40, playerSprite.y, 1000);
-        trail.width = 10;
-        trail.makeParticles("explosion", [1, 2, 3, 4, 5]);
-        trail.setXSpeed(20, -20);
-        trail.setRotation(50, -50);
-        trail.setAlpha(0.4, 0, 800);
-        trail.setScale(0.01, 0.1, 0.01, 0.1, 1000, Phaser.Easing.Quintic.Out);
-
-        let moveEngine = null;
+        let controlEngine = null;
         if (this.configuration.playWithGamePad()) {
             let pad = this.game.input.gamepad.pad1;
             this.game.input.gamepad.start();
-            moveEngine = new GamePadControlEngine(pad);
+            controlEngine = new GamePadControlEngine(pad);
         } else {
-            moveEngine = new KeyboardControlEngine(this.game.input.keyboard);
+            controlEngine = new KeyboardControlEngine(this.game.input.keyboard);
         }
 
-        this.ship = new PlayerShip(playerSprite, this.game.time, bullets, this.game.physics.arcade, trail, moveEngine);
+        let shootingMachine = shipBuilder.buildShootingMachine(bullets, this.game.time, this.game.physics.arcade);
 
+        this.player = new Ship(shipSprite, trail, controlEngine, shootingMachine);
     }
 
     private repaintCurrentChunk () {
