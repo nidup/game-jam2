@@ -3,6 +3,7 @@
 import Configuration from "./Configuration";
 import {MapChunkRegistry, MapChunk} from "./MapGenerator";
 import {PlayerShip} from "./Ship";
+import {IMoveEngine, KeyboardMoveEngine, GamePadEngine} from "./MoveEngine";
 
 class SimpleGame {
     private game: Phaser.Game;
@@ -85,6 +86,9 @@ class SimpleGame {
         let cursors = this.game.input.keyboard.createCursorKeys();
         let fireButton = this.game.input.keyboard.addKey(Phaser.KeyCode.SPACEBAR);
 
+        let pad = this.game.input.gamepad.pad1;
+        this.game.input.gamepad.start();
+
         this.game.world.setBounds(0, 0, this.configuration.getMapChunkWidth(), this.configuration.getMapChunkHeight());
 
         this.game.physics.startSystem(Phaser.Physics.P2JS);
@@ -128,7 +132,10 @@ class SimpleGame {
         trail.setAlpha(0.4, 0, 800);
         trail.setScale(0.01, 0.1, 0.01, 0.1, 1000, Phaser.Easing.Quintic.Out);
 
-        this.ship = new PlayerShip(playerSprite, cursors, this.game.time, bullets, fireButton, this.game.physics.arcade, trail);
+        //let moveEngine = new KeyboardMoveEngine(cursors);
+        let moveEngine = new GamePadEngine(pad);
+
+        this.ship = new PlayerShip(playerSprite, this.game.time, bullets, this.game.physics.arcade, trail, fireButton, moveEngine);
     }
 
     private repaintCurrentChunk () {

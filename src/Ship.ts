@@ -1,11 +1,12 @@
 
+import {IMoveEngine} from "./MoveEngine";
+
 interface IShip {
     move();
 }
 
 export class PlayerShip implements IShip {
     private sprite: Phaser.Sprite;
-    private cursors: Phaser.CursorKeys;
     private fireButton: Phaser.Key;
     private controller: VelocityController;
     private time: Phaser.Time;
@@ -13,15 +14,16 @@ export class PlayerShip implements IShip {
     private bulletTimer: number = 0;
     private physics: Phaser.Physics.Arcade;
     private trail: Phaser.Particles.Arcade.Emitter;
+    private moveEngine: IMoveEngine;
 
-    constructor (sprite: Phaser.Sprite, cursors: Phaser.CursorKeys, time: Phaser.Time, bullets: Phaser.Group, fireButton: Phaser.Key, physics: Phaser.Physics.Arcade, trail: Phaser.Particles.Arcade.Emitter) {
+    constructor (sprite: Phaser.Sprite, time: Phaser.Time, bullets: Phaser.Group, physics: Phaser.Physics.Arcade, trail: Phaser.Particles.Arcade.Emitter, fireButton: Phaser.Key, moveEngine: IMoveEngine) {
         this.sprite = sprite;
         this.bullets = bullets;
-        this.cursors = cursors;
         this.fireButton = fireButton;
         this.time = time;
         this.physics = physics;
         this.trail = trail;
+        this.moveEngine = moveEngine;
         this.controller = new VelocityController();
 
         this.sprite.animations.add("left_full", [ 0 ], 5, true);
@@ -33,30 +35,38 @@ export class PlayerShip implements IShip {
 
     public move () {
 
-        if (this.cursors.left.isDown) {
+        this.moveEngine.process();
+
+        if (this.moveEngine.isRotatingLeft()) {
             this.sprite.body.rotateLeft(100);
-        } else if (this.cursors.right.isDown) {
+        } else if (this.moveEngine.isRotatingRight()) {
             this.sprite.body.rotateRight(100);
         } else {
             this.sprite.body.setZeroRotation();
         }
 
-        if (this.cursors.up.isDown) {
+        if (this.moveEngine.isAccelerating()) {
             this.sprite.body.thrust(400);
-        } else if (this.cursors.down.isDown) {
+        } else if (this.moveEngine.isBraking()) {
             this.sprite.body.reverse(100);
         }
 
-        if (this.cursors.left.isDown && this.cursors.up.isUp) {
+        if (this.moveEngine.isRotatingLeft() && this.moveEngine.isAccelerating()) {
             this.sprite.play("left_full");
-        } else if (this.cursors.left.isDown && this.cursors.up.isDown) {
+        } else if (this.moveEngine.isRotatingLeft()) {
             this.sprite.play("left");
-        } else if (this.cursors.right.isDown && this.cursors.up.isUp) {
+        } else if (this.moveEngine.isRotatingRight() && this.moveEngine.isAccelerating()) {
             this.sprite.play("right_full");
-        } else if (this.cursors.right.isDown && this.cursors.up.isDown) {
+        } else if (this.moveEngine.isRotatingRight()) {
             this.sprite.play("right");
         } else {
             this.sprite.play("idle");
+        }
+
+        if (this.moveEngine.isAccelerating()) {
+            this.trail.x = this.sprite.x;
+            this.trail.y = this.sprite.y;
+            this.trail.start(false, 200, 10);
         }
 
         if (this.fireButton.isDown) {
@@ -73,12 +83,6 @@ export class PlayerShip implements IShip {
                     this.bulletTimer = this.time.now + bulletSpacing;
                 }
             }
-        }
-
-        if (this.cursors.up.isDown) {
-            this.trail.x = this.sprite.x;
-            this.trail.y = this.sprite.y;
-            this.trail.start(false, 200, 10);
         }
 
         this.controller.limitVelocity(this.sprite, 15);
