@@ -16,11 +16,11 @@ export default class Configuration {
     }
 
     public getGameWidthInTiles() {
-        return 10;
+        return 13;
     }
 
     public getGameHeightInTiles() {
-        return 10;
+        return 13;
     }
 
     public getPixelRatio() {

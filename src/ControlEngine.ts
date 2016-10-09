@@ -129,3 +129,10 @@ export class GamePadControlEngine  extends AbstractControlEngine {
         // TODO: nothing to do as handled by callbacks
     }
 }
+
+export class DummyControlEngine extends AbstractControlEngine {
+
+    public process() {
+        // nothing to do in the dummy engine
+    }
+}

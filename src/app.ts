@@ -4,7 +4,7 @@ import Configuration from "./Configuration";
 import {MapChunkRegistry, MapChunk} from "./MapGenerator";
 import {Ship} from "./Ship";
 import {ShipBuilder} from "./ShipBuilder";
-import {KeyboardControlEngine, GamePadControlEngine} from "./ControlEngine";
+import {KeyboardControlEngine, GamePadControlEngine, DummyControlEngine} from "./ControlEngine";
 
 class SimpleGame {
     private game: Phaser.Game;
@@ -15,6 +15,7 @@ class SimpleGame {
     private map: Phaser.Tilemap = null;
     private layer: Phaser.TilemapLayer = null;
     private generating: boolean = false;
+    private enemy: Ship = null;
 
     constructor(config: Configuration) {
         this.configuration = config;
@@ -46,6 +47,7 @@ class SimpleGame {
     public update() {
 
         this.player.move();
+        this.enemy.move();
 
         if (this.generating === false && this.player.getX() > this.configuration.getRightBorder()) {
             this.generating = true;
@@ -86,9 +88,7 @@ class SimpleGame {
     private createWorld() {
 
         this.game.time.advancedTiming = true;
-
         this.game.world.setBounds(0, 0, this.configuration.getMapChunkWidth(), this.configuration.getMapChunkHeight());
-
         this.game.physics.startSystem(Phaser.Physics.P2JS);
         this.game.physics.p2.restitution = 0.8;
 
@@ -104,6 +104,7 @@ class SimpleGame {
         this.repaintCurrentChunk();
 
         this.buildPlayer();
+        this.buildEnemy();
     }
 
     private buildPlayer() {
@@ -133,6 +134,27 @@ class SimpleGame {
         let shootingMachine = shipBuilder.buildShootingMachine(bullets, this.game.time, this.game.physics.arcade);
 
         this.player = new Ship(shipSprite, trail, controlEngine, shootingMachine);
+    }
+
+    private buildEnemy() {
+        let shipBuilder = new ShipBuilder();
+        let bullets = shipBuilder.buildBullets(this.game, "bullet");
+
+        let shipSprite = shipBuilder.buildSprite(
+            this.game,
+            "ship2",
+            this.configuration.getMapChunkWidth() / 4 * 3,
+            this.configuration.getMapChunkHeight() / 2,
+            this.configuration.getPixelRatio()
+        );
+
+        let trail = shipBuilder.buildTrail(this.game, "explosion", shipSprite);
+
+        let controlEngine = new DummyControlEngine();
+
+        let shootingMachine = shipBuilder.buildShootingMachine(bullets, this.game.time, this.game.physics.arcade);
+
+        this.enemy = new Ship(shipSprite, trail, controlEngine, shootingMachine);
     }
 
     private repaintCurrentChunk () {
