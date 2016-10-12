@@ -3,28 +3,32 @@ export class ShootingMachine {
     private time: Phaser.Time;
     private bullets: Phaser.Group;
     private bulletTimer: number;
-    private physics: Phaser.Physics.Arcade;
 
-    constructor (bullets: Phaser.Group, time: Phaser.Time, physics: Phaser.Physics.Arcade) {
+    constructor (bullets: Phaser.Group, time: Phaser.Time) {
         this.bullets = bullets;
         this.time = time;
-        this.physics = physics;
         this.bulletTimer = 0;
     }
 
-    public shoot(emiterSprite: Phaser.Sprite) {
+    public shoot(shipSprite: Phaser.Sprite) {
         if (this.time.now > this.bulletTimer) {
-            let bulletSpeed = 400;
+            let bulletSpeed = 2000;
             let bulletSpacing = 200;
             let bullet = this.bullets.getFirstExists(false);
             if (bullet) {
-                let bulletOffset = 20;
-                bullet.reset(emiterSprite.x + bulletOffset, emiterSprite.y);
-                bullet.angle = emiterSprite.angle;
-                this.physics.velocityFromAngle(bullet.angle - 90, bulletSpeed, bullet.body.velocity);
-                bullet.body.velocity.x += emiterSprite.body.velocity.x;
+                bullet.reset(shipSprite.centerX, shipSprite.centerY);
+                bullet.body.angle = shipSprite.body.angle;
+                bullet.body.force.x = shipSprite.body.force.x;
+                bullet.body.force.y = shipSprite.body.force.y;
+                bullet.body.velocity.x = shipSprite.body.velocity.x;
+                bullet.body.velocity.y = shipSprite.body.velocity.y;
+                bullet.body.moveForward(bulletSpeed);
                 this.bulletTimer = this.time.now + bulletSpacing;
             }
         }
+    }
+
+    public getBullets() {
+        return this.bullets;
     }
 }

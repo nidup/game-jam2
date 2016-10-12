@@ -91,6 +91,14 @@ export class Ship implements IShip {
     public bringToTop() {
         this.sprite.bringToTop();
     }
+
+    public getBullets() {
+        return this.shootingMachine.getBullets();
+    }
+
+    public getSprite() {
+        return this.sprite;
+    }
 }
 
 /**

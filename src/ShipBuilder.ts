@@ -3,6 +3,8 @@ import {ShootingMachine} from "./ShootingMachine";
 
 export class ShipBuilder {
 
+    private game: Phaser.Game; // TODO tmp
+
     public buildSprite(game: Phaser.Game, key: string, x: number, y: number, pixelRatio: number) {
         let shipSprite = game.add.sprite(x, y, key);
         shipSprite.scale.setTo(pixelRatio, pixelRatio);
@@ -14,14 +16,49 @@ export class ShipBuilder {
     public buildBullets(game: Phaser.Game, key: string) {
         let bullets = game.add.group();
         bullets.enableBody = true;
-        bullets.physicsBodyType = Phaser.Physics.ARCADE;
+        bullets.physicsBodyType = Phaser.Physics.P2JS;
+        game.physics.p2.enable(bullets);
+
         bullets.createMultiple(30, key);
         bullets.setAll("anchor.x", 0.5);
-        bullets.setAll("anchor.y", 1);
-        bullets.setAll("outOfBoundsKill", true);
+        bullets.setAll("anchor.y", 0.5);
         bullets.setAll("checkWorldBounds", true);
+        bullets.setAll("outOfBoundsKill", true);
+        bullets.setAll("outOfCameraBoundsKill", true);
+        // TODO: how to kill bullets?
+
+        // TODO hardcode stuff just to test
+        this.game = game;
+        bullets.forEach(function (bullet){
+            bullet.body.onBeginContact.add(this.collisionHandler, this);
+        }, this);
 
         return bullets;
+    }
+
+    // TODO
+    private collisionHandler (body, bodyShape, contactShape, contactEquation) {
+
+        if (body === null) {
+            return;
+        }
+
+        if (body.sprite.key === "ship1") {
+            return;
+        }
+
+        // cf http://stackoverflow.com/questions/23587975/detect-impact-force-in-phaser-with-p2js
+        let enemySprite = body.sprite;
+        let dieSprite = this.game.add.sprite(
+            enemySprite.centerX - enemySprite.width,
+            enemySprite.centerY - enemySprite.height,
+            'explosion'
+        );
+        dieSprite.animations.add('kaboom');
+        dieSprite.play("kaboom", 30, false, true);
+
+        body.sprite.kill();
+        // TODO kill the whole object
     }
 
     public buildTrail(game: Phaser.Game, key: string, shipSprite: Phaser.Sprite) {
@@ -36,7 +73,7 @@ export class ShipBuilder {
         return trail;
     }
 
-    public buildShootingMachine(bullets: Phaser.Group, time: Phaser.Time, physics: Phaser.Physics.Arcade) {
-        return new ShootingMachine(bullets, time, physics);
+    public buildShootingMachine(bullets: Phaser.Group, time: Phaser.Time) {
+        return new ShootingMachine(bullets, time);
     }
 }

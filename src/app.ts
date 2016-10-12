@@ -49,6 +49,7 @@ class SimpleGame {
         this.player.move();
         this.enemy.move();
 
+        // TODO: reset enemy and bullets positions
         if (this.generating === false && this.player.getX() > this.configuration.getRightBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getRight(this.currentChunk);
@@ -82,7 +83,7 @@ class SimpleGame {
     }
 
     public render() {
-        this.game.debug.text(this.game.time.fps + " " || "--", 2, 14, "#00ff00");
+        this.game.debug.text(this.game.time.fps + " " + this.player.getBullets().countLiving() + " " || "--", 2, 14, "#00ff00");
     }
 
     private createWorld() {
@@ -90,6 +91,7 @@ class SimpleGame {
         this.game.time.advancedTiming = true;
         this.game.world.setBounds(0, 0, this.configuration.getMapChunkWidth(), this.configuration.getMapChunkHeight());
         this.game.physics.startSystem(Phaser.Physics.P2JS);
+        this.game.physics.p2.setImpactEvents(true);
         this.game.physics.p2.restitution = 0.8;
 
         this.map = this.game.add.tilemap();
@@ -131,7 +133,7 @@ class SimpleGame {
             controlEngine = new KeyboardControlEngine(this.game.input.keyboard);
         }
 
-        let shootingMachine = shipBuilder.buildShootingMachine(bullets, this.game.time, this.game.physics.arcade);
+        let shootingMachine = shipBuilder.buildShootingMachine(bullets, this.game.time);
 
         this.player = new Ship(shipSprite, trail, controlEngine, shootingMachine);
     }
@@ -143,18 +145,42 @@ class SimpleGame {
         let shipSprite = shipBuilder.buildSprite(
             this.game,
             "ship2",
-            this.configuration.getMapChunkWidth() / 4 * 3,
+            this.configuration.getMapChunkWidth() / 2 + 100,
             this.configuration.getMapChunkHeight() / 2,
             this.configuration.getPixelRatio()
         );
 
         let trail = shipBuilder.buildTrail(this.game, "explosion", shipSprite);
 
-        let controlEngine = new DummyControlEngine();
+        let controlEngine = new DummyControlEngine(this.player, shipSprite);
 
-        let shootingMachine = shipBuilder.buildShootingMachine(bullets, this.game.time, this.game.physics.arcade);
+        let shootingMachine = shipBuilder.buildShootingMachine(bullets, this.game.time);
 
         this.enemy = new Ship(shipSprite, trail, controlEngine, shootingMachine);
+
+
+        this.player.getSprite().body.onBeginContact.add(this.playerCollisionHandler, this);
+        // shipSprite.body.onBeginContact.add(this.enemyCollisionHandler, this);
+    }
+
+    // TODO
+    private playerCollisionHandler (body, bodyShape, contactShape, contactEquation) {
+        if (body.sprite.key === "bullet" || body.sprite.key === "ship2") {
+            return;
+        }
+
+        // cf http://stackoverflow.com/questions/23587975/detect-impact-force-in-phaser-with-p2js
+        let enemySprite = body.sprite;
+        let dieSprite = this.game.add.sprite(
+            enemySprite.centerX - enemySprite.width,
+            enemySprite.centerY - enemySprite.height,
+            'explosion'
+        );
+        dieSprite.animations.add('kaboom');
+        dieSprite.play("kaboom", 30, false, true);
+
+        body.sprite.kill();
+        // TODO kill the whole object
     }
 
     private repaintCurrentChunk () {
