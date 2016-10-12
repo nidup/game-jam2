@@ -152,11 +152,13 @@ export class DummyControlEngine extends AbstractControlEngine {
 
             // cf http://phaser.io/examples/v2/p2-physics/accelerate-to-object
             // TODO: this is pretty cool but not very compatible with manual controls!
-            let speed = 200;
+            let speed = 250; // TODO thrust etc
             let angle = Math.atan2(this.player.getY() - this.sprite.y, this.player.getX() - this.sprite.x);
             this.sprite.body.rotation = angle + Phaser.Math.degToRad(90);
             this.sprite.body.force.x = Math.cos(angle) * speed;
             this.sprite.body.force.y = Math.sin(angle) * speed;
+
+            // this.shooting = States.SHOOTING;
 
             /*
             let distance = this.getDistanceFromPlayer();
@@ -177,7 +179,7 @@ export class DummyControlEngine extends AbstractControlEngine {
     }
 
     private seePlayer() {
-        let scope = 300;
+        let scope = 500;
         return (Math.abs(this.player.getX() - this.sprite.x) < scope)
             && (Math.abs(this.player.getY() - this.sprite.y) < scope);
     }

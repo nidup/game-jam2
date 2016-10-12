@@ -45,37 +45,49 @@ class SimpleGame {
     }
 
     public update() {
-
         this.player.move();
         this.enemy.move();
 
         // TODO: reset enemy and bullets positions
+        // TODO: reset enemy does not work propery, only works when enemy following
         if (this.generating === false && this.player.getX() > this.configuration.getRightBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getRight(this.currentChunk);
             this.repaintCurrentChunk();
-            this.player.reset(this.configuration.getLeftBorder(), this.player.getY());
+            let playerX = this.configuration.getLeftBorder();
+            let enemyX = playerX + (Math.abs(this.enemy.getX()) - Math.abs(this.player.getX()));
+            this.player.reset(playerX, this.player.getY());
+            this.enemy.reset(enemyX, this.enemy.getY());
             this.generating = false;
 
         } else if (this.generating === false && this.player.getX() < this.configuration.getLeftBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getLeft(this.currentChunk);
             this.repaintCurrentChunk();
-            this.player.reset(this.configuration.getRightBorder(), this.player.getY());
+            let playerX = this.configuration.getRightBorder();
+            let enemyX = playerX + (Math.abs(this.enemy.getX()) - Math.abs(this.player.getX()));
+            this.player.reset(playerX, this.player.getY());
+            this.enemy.reset(enemyX, this.enemy.getY());
             this.generating = false;
 
         } else if (this.generating === false && this.player.getY() > this.configuration.getBottomBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getBottom(this.currentChunk);
             this.repaintCurrentChunk();
-            this.player.reset(this.player.getX(), this.configuration.getTopBorder());
+            let playerY = this.configuration.getTopBorder();
+            let enemyY = playerY + (Math.abs(this.enemy.getY()) - Math.abs(this.player.getY()));
+            this.player.reset(this.player.getX(), playerY);
+            this.enemy.reset(this.enemy.getX(), enemyY);
             this.generating = false;
 
         } else if (this.generating === false && this.player.getY() < this.configuration.getTopBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getTop(this.currentChunk);
             this.repaintCurrentChunk();
-            this.player.reset(this.player.getX(), this.configuration.getBottomBorder());
+            let playerY = this.configuration.getBottomBorder();
+            let enemyY = playerY + (Math.abs(this.enemy.getY()) - Math.abs(this.player.getY()));
+            this.player.reset(this.player.getX(), playerY);
+            this.enemy.reset(this.enemy.getX(), enemyY);
             this.generating = false;
         }
 
@@ -83,7 +95,15 @@ class SimpleGame {
     }
 
     public render() {
-        this.game.debug.text(this.game.time.fps + " " + this.player.getBullets().countLiving() + " " || "--", 2, 14, "#00ff00");
+        this.game.debug.text(
+            "FPS : "  + this.game.time.fps + " "
+            + "Bullets :" + this.player.getBullets().countLiving() + " "
+            + " camX " + this.game.camera.x + " "
+            + " eneX " + this.enemy.getX() + " ",
+            2,
+            14,
+            "#00ff00"
+        );
     }
 
     private createWorld() {
@@ -111,7 +131,6 @@ class SimpleGame {
 
     private buildPlayer() {
         let shipBuilder = new ShipBuilder();
-        let bullets = shipBuilder.buildBullets(this.game, "bullet");
 
         let shipSprite = shipBuilder.buildSprite(
             this.game,
@@ -133,14 +152,13 @@ class SimpleGame {
             controlEngine = new KeyboardControlEngine(this.game.input.keyboard);
         }
 
-        let shootingMachine = shipBuilder.buildShootingMachine(bullets, this.game.time);
+        let shootingMachine = shipBuilder.buildShootingMachine(this.game, "bullet", "explosion");
 
         this.player = new Ship(shipSprite, trail, controlEngine, shootingMachine);
     }
 
     private buildEnemy() {
         let shipBuilder = new ShipBuilder();
-        let bullets = shipBuilder.buildBullets(this.game, "bullet");
 
         let shipSprite = shipBuilder.buildSprite(
             this.game,
@@ -154,36 +172,12 @@ class SimpleGame {
 
         let controlEngine = new DummyControlEngine(this.player, shipSprite);
 
-        let shootingMachine = shipBuilder.buildShootingMachine(bullets, this.game.time);
+        let shootingMachine = shipBuilder.buildShootingMachine(this.game, "bullet", "explosion");
 
         this.enemy = new Ship(shipSprite, trail, controlEngine, shootingMachine);
-
-
-        this.player.getSprite().body.onBeginContact.add(this.playerCollisionHandler, this);
-        // shipSprite.body.onBeginContact.add(this.enemyCollisionHandler, this);
     }
 
-    // TODO
-    private playerCollisionHandler (body, bodyShape, contactShape, contactEquation) {
-        if (body.sprite.key === "bullet" || body.sprite.key === "ship2") {
-            return;
-        }
-
-        // cf http://stackoverflow.com/questions/23587975/detect-impact-force-in-phaser-with-p2js
-        let enemySprite = body.sprite;
-        let dieSprite = this.game.add.sprite(
-            enemySprite.centerX - enemySprite.width,
-            enemySprite.centerY - enemySprite.height,
-            'explosion'
-        );
-        dieSprite.animations.add('kaboom');
-        dieSprite.play("kaboom", 30, false, true);
-
-        body.sprite.kill();
-        // TODO kill the whole object
-    }
-
-    private repaintCurrentChunk () {
+    private repaintCurrentChunk() {
         let newLayer = this.getLayer(this.currentChunk);
     }
 
