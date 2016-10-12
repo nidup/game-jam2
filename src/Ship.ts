@@ -2,11 +2,7 @@
 import {IControlEngine} from "./ControlEngine";
 import {ShootingMachine} from "./ShootingMachine";
 
-interface IShip {
-    move();
-}
-
-export class Ship implements IShip {
+export class Ship {
     private sprite: Phaser.Sprite;
     private controller: VelocityController;
     private trail: Phaser.Particles.Arcade.Emitter;

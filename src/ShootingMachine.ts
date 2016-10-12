@@ -4,20 +4,21 @@ export class ShootingMachine {
     private bullets: Phaser.Group;
     private explosions: Phaser.Group;
     private bulletTimer: number;
+    private bulletSpacingMs: number;
 
-    constructor (bullets: Phaser.Group, explosions: Phaser.Group, time: Phaser.Time) {
+    constructor (bullets: Phaser.Group, explosions: Phaser.Group, time: Phaser.Time, bulletSpacingMs: number) {
         this.bullets = bullets;
         this.explosions = explosions;
         this.time = time;
         this.bulletTimer = 0;
+        this.bulletSpacingMs = bulletSpacingMs;
         this.prepareCollisions(bullets);
     }
 
     public shoot(shipSprite: Phaser.Sprite) {
         if (this.time.now > this.bulletTimer) {
             let bulletSpeed = 2000;
-            let bulletSpacingMs = 200;
-            let bulletLifeMs = 200;
+            let bulletLifeMs = this.bulletSpacingMs;
             let bullet = this.bullets.getFirstExists(false);
             if (bullet) {
                 bullet.reset(shipSprite.centerX, shipSprite.centerY);
@@ -27,7 +28,7 @@ export class ShootingMachine {
                 bullet.body.velocity.x = shipSprite.body.velocity.x;
                 bullet.body.velocity.y = shipSprite.body.velocity.y;
                 bullet.body.moveForward(bulletSpeed);
-                this.bulletTimer = this.time.now + bulletSpacingMs;
+                this.bulletTimer = this.time.now + this.bulletSpacingMs;
                 this.time.events.add(bulletLifeMs, this.killBullet, this, bullet);
             }
         }
@@ -53,18 +54,17 @@ export class ShootingMachine {
             return;
         }
 
-        if (body.sprite.key === "ship1" || body.sprite.key === "ship2") { // TODO don't kill the owner? not mandatory if properly kills bullets
-            return;
-        }
+        // kill the bullet
+        contactShape.body.parent.sprite.kill();
 
         // cf http://stackoverflow.com/questions/23587975/detect-impact-force-in-phaser-with-p2js
+        // damage the enemy
         let enemySprite = body.sprite;
-
         let explosion = this.explosions.getFirstExists(false);
         explosion.reset(enemySprite.centerX - enemySprite.width, enemySprite.centerY - enemySprite.height);
         explosion.play("explosion", 30, false, true);
+        body.sprite.damage(10);
 
-        body.sprite.kill();
         // TODO kill the whole object
         // TODO kill the bullet!
     }

@@ -96,10 +96,10 @@ class SimpleGame {
 
     public render() {
         this.game.debug.text(
-            "FPS : "  + this.game.time.fps + " "
+            "FPS: "  + this.game.time.fps + " "
             + "Bullets :" + this.player.getBullets().countLiving() + " "
-            + " camX " + this.game.camera.x + " "
-            + " eneX " + this.enemy.getX() + " ",
+            + " enemy " + this.enemy.getSprite().health + " "
+            + " hero " + this.player.getSprite().health + " ",
             2,
             14,
             "#00ff00"
@@ -152,7 +152,7 @@ class SimpleGame {
             controlEngine = new KeyboardControlEngine(this.game.input.keyboard);
         }
 
-        let shootingMachine = shipBuilder.buildShootingMachine(this.game, "bullet", "explosion");
+        let shootingMachine = shipBuilder.buildShootingMachine(this.game, "bullet", "explosion", 200);
 
         this.player = new Ship(shipSprite, trail, controlEngine, shootingMachine);
     }
@@ -172,7 +172,7 @@ class SimpleGame {
 
         let controlEngine = new DummyControlEngine(this.player, shipSprite);
 
-        let shootingMachine = shipBuilder.buildShootingMachine(this.game, "bullet", "explosion");
+        let shootingMachine = shipBuilder.buildShootingMachine(this.game, "bullet", "explosion", 800);
 
         this.enemy = new Ship(shipSprite, trail, controlEngine, shootingMachine);
     }

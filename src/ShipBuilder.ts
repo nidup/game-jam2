@@ -3,21 +3,21 @@ import {ShootingMachine} from "./ShootingMachine";
 
 export class ShipBuilder {
 
-    private game: Phaser.Game; // TODO tmp
-
     public buildSprite(game: Phaser.Game, key: string, x: number, y: number, pixelRatio: number) {
         let shipSprite = game.add.sprite(x, y, key);
         shipSprite.scale.setTo(pixelRatio, pixelRatio);
         game.physics.p2.enable(shipSprite);
+        shipSprite.maxHealth = 100;
+        shipSprite.health = 100;
 
         return shipSprite;
     }
 
-    public buildShootingMachine(game: Phaser.Game, bulletKey: string, explosionKey: string) {
+    public buildShootingMachine(game: Phaser.Game, bulletKey: string, explosionKey: string, bulletSpacingMs: number) {
         let bullets = this.buildBulletsPool(game, bulletKey);
         let explosions = this.buildBulletExplosionsPool(game, explosionKey);
 
-        let shootingMachine = new ShootingMachine(bullets, explosions, game.time);
+        let shootingMachine = new ShootingMachine(bullets, explosions, game.time, bulletSpacingMs);
 
         return shootingMachine;
     }
@@ -34,21 +34,8 @@ export class ShipBuilder {
         bullets.setAll("checkWorldBounds", true);
         bullets.setAll("outOfBoundsKill", true);
         bullets.setAll("outOfCameraBoundsKill", true);
-        // TODO: how to kill bullets?
 
         return bullets;
-    }
-
-    private buildBulletExplosionsPool(game: Phaser.Game, explosionKey: string) {
-        let explosions = game.add.group();
-        explosions.createMultiple(30, explosionKey);
-        explosions.forEach(function (explosion){
-            explosion.anchor.x = 0.5;
-            explosion.anchor.y = 0.5;
-            explosion.animations.add(explosionKey);
-        }, this);
-
-        return explosions;
     }
 
     public buildTrail(game: Phaser.Game, key: string, shipSprite: Phaser.Sprite) {
@@ -61,5 +48,17 @@ export class ShipBuilder {
         trail.setScale(0.01, 0.1, 0.01, 0.1, 1000, Phaser.Easing.Quintic.Out);
 
         return trail;
+    }
+
+    private buildBulletExplosionsPool(game: Phaser.Game, explosionKey: string) {
+        let explosions = game.add.group();
+        explosions.createMultiple(30, explosionKey);
+        explosions.forEach(function (explosion){
+            explosion.anchor.x = 0.5;
+            explosion.anchor.y = 0.5;
+            explosion.animations.add(explosionKey);
+        }, this);
+
+        return explosions;
     }
 }
