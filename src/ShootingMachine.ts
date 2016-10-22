@@ -1,3 +1,4 @@
+import {Ship} from "./Ship";
 
 export class ShootingMachine {
     private time: Phaser.Time;
@@ -5,8 +6,9 @@ export class ShootingMachine {
     private explosions: Phaser.Group;
     private bulletTimer: number;
     private bulletSpacingMs: number;
+    private ship: Ship;
 
-    constructor (bullets: Phaser.Group, explosions: Phaser.Group, time: Phaser.Time, bulletSpacingMs: number) {
+    constructor(bullets: Phaser.Group, explosions: Phaser.Group, time: Phaser.Time, bulletSpacingMs: number) {
         this.bullets = bullets;
         this.explosions = explosions;
         this.time = time;
@@ -15,18 +17,23 @@ export class ShootingMachine {
         this.prepareCollisions(bullets);
     }
 
-    public shoot(shipSprite: Phaser.Sprite) {
-        if (this.time.now > this.bulletTimer) {
+    // TODO to update
+    public configure(ship: Ship) {
+        this.ship = ship;
+    }
+
+    public shoot() {
+        if (this.time.now > this.bulletTimer && this.ship !== null && this.bullets !== null) {
             let bulletSpeed = 2000;
             let bulletLifeMs = this.bulletSpacingMs;
             let bullet = this.bullets.getFirstExists(false);
             if (bullet) {
-                bullet.reset(shipSprite.centerX, shipSprite.centerY);
-                bullet.body.angle = shipSprite.body.angle;
-                bullet.body.force.x = shipSprite.body.force.x;
-                bullet.body.force.y = shipSprite.body.force.y;
-                bullet.body.velocity.x = shipSprite.body.velocity.x;
-                bullet.body.velocity.y = shipSprite.body.velocity.y;
+                bullet.reset(this.ship.centerX, this.ship.centerY);
+                bullet.body.angle = this.ship.body.angle;
+                bullet.body.force.x = this.ship.body.force.x;
+                bullet.body.force.y = this.ship.body.force.y;
+                bullet.body.velocity.x = this.ship.body.velocity.x;
+                bullet.body.velocity.y = this.ship.body.velocity.y;
                 bullet.body.moveForward(bulletSpeed);
                 this.bulletTimer = this.time.now + this.bulletSpacingMs;
                 this.time.events.add(bulletLifeMs, this.killBullet, this, bullet);
@@ -36,6 +43,11 @@ export class ShootingMachine {
 
     public getBullets() {
         return this.bullets;
+    }
+
+    public kill() {
+        this.bullets.destroy();
+        this.explosions.destroy();
     }
 
     private killBullet(bullet: Phaser.Sprite) {
@@ -51,6 +63,10 @@ export class ShootingMachine {
     private collideBullet(body, bodyShape, contactShape, contactEquation) {
 
         if (body === null) { // TODO: why?
+            return;
+        }
+
+        if (body.sprite.key === this.ship.key) {
             return;
         }
 

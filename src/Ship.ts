@@ -1,99 +1,111 @@
-
 import {IControlEngine} from "./ControlEngine";
 import {ShootingMachine} from "./ShootingMachine";
 
-export class Ship {
-    private sprite: Phaser.Sprite;
+export class Ship extends Phaser.Sprite {
+
     private controller: VelocityController;
     private trail: Phaser.Particles.Arcade.Emitter;
     private controlEngine: IControlEngine;
     private shootingMachine: ShootingMachine;
 
-    constructor (
-        sprite: Phaser.Sprite,
+    constructor(game: Phaser.Game, x: number, y: number, key: string, frame: number) {
+        super(game, x, y, key, frame);
+
+        // TODO no hardcoded stuff
+        let pixelRatio = 2;
+        this.scale.setTo(pixelRatio, pixelRatio);
+
+        this.animations.add("left_full", [ 0 ], 5, true);
+        this.animations.add("left", [ 1 ], 5, true);
+        this.animations.add("idle", [ 2 ], 5, true);
+        this.animations.add("right", [ 3 ], 5, true);
+        this.animations.add("right_full", [ 4 ], 5, true);
+
+        game.add.existing(this);
+        game.physics.p2.enable(this);
+    }
+
+    // TODO : to update
+    public configure(
+        pixelRatio: number,
         trail: Phaser.Particles.Arcade.Emitter,
         controlEngine: IControlEngine,
-        shootingMachine: ShootingMachine
+        shootingMachine: ShootingMachine,
+        health: number
     ) {
-        this.sprite = sprite;
+        this.maxHealth = health;
+        this.health = health;
         this.trail = trail;
         this.controlEngine = controlEngine;
         this.controller = new VelocityController();
         this.shootingMachine = shootingMachine;
-
-        this.sprite.animations.add("left_full", [ 0 ], 5, true);
-        this.sprite.animations.add("left", [ 1 ], 5, true);
-        this.sprite.animations.add("idle", [ 2 ], 5, true);
-        this.sprite.animations.add("right", [ 3 ], 5, true);
-        this.sprite.animations.add("right_full", [ 4 ], 5, true);
+        this.shootingMachine.configure(this);
     }
 
-    public move () {
+    public update () {
 
         this.controlEngine.process();
 
         if (this.controlEngine.isRotatingLeft()) {
-            this.sprite.body.rotateLeft(100);
+            this.body.rotateLeft(100);
         } else if (this.controlEngine.isRotatingRight()) {
-            this.sprite.body.rotateRight(100);
+            this.body.rotateRight(100);
         } else {
-            this.sprite.body.setZeroRotation();
+            this.body.setZeroRotation();
         }
 
         if (this.controlEngine.isAccelerating()) {
-            this.sprite.body.thrust(400);
+            this.body.thrust(400);
         } else if (this.controlEngine.isBraking()) {
-            this.sprite.body.reverse(100);
+            this.body.reverse(100);
         }
 
         if (this.controlEngine.isRotatingLeft() && this.controlEngine.isAccelerating()) {
-            this.sprite.play("left_full");
+            this.play("left_full");
         } else if (this.controlEngine.isRotatingLeft()) {
-            this.sprite.play("left");
+            this.play("left");
         } else if (this.controlEngine.isRotatingRight() && this.controlEngine.isAccelerating()) {
-            this.sprite.play("right_full");
+            this.play("right_full");
         } else if (this.controlEngine.isRotatingRight()) {
-            this.sprite.play("right");
+            this.play("right");
         } else {
-            this.sprite.play("idle");
+            this.play("idle");
         }
 
         if (this.controlEngine.isAccelerating()) {
-            this.trail.x = this.sprite.x;
-            this.trail.y = this.sprite.y;
+            this.trail.x = this.x;
+            this.trail.y = this.y;
             this.trail.start(false, 200, 10);
         }
 
         if (this.controlEngine.isShooting()) {
-            this.shootingMachine.shoot(this.sprite);
+            this.shootingMachine.shoot();
         }
 
-        this.controller.limitVelocity(this.sprite, 15);
+        this.controller.limitVelocity(this, 15);
+    }
+
+    public kill() {
+        this.shootingMachine.kill();
+        super.kill();
+        return this;
     }
 
     public getX() {
-        return this.sprite.x;
+        return this.x;
     }
 
     public getY() {
-        return this.sprite.y;
+        return this.y;
     }
 
-    public reset(x: number, y: number) {
-        this.sprite.body.x = x;
-        this.sprite.body.y = y;
-    }
-
-    public bringToTop() {
-        this.sprite.bringToTop();
+    public resetPosition(x: number, y: number) {
+        this.body.x = x;
+        this.body.y = y;
     }
 
     public getBullets() {
         return this.shootingMachine.getBullets();
-    }
-
-    public getSprite() {
-        return this.sprite;
     }
 }
 

@@ -1,19 +1,30 @@
 
 import {ShootingMachine} from "./ShootingMachine";
+import {IControlEngine} from "./ControlEngine";
+import {Ship} from "./Ship";
 
 export class ShipBuilder {
 
-    public buildSprite(game: Phaser.Game, key: string, x: number, y: number, pixelRatio: number) {
-        let shipSprite = game.add.sprite(x, y, key);
-        shipSprite.scale.setTo(pixelRatio, pixelRatio);
-        game.physics.p2.enable(shipSprite);
-        shipSprite.maxHealth = 100;
-        shipSprite.health = 100;
+    public buildSprite(
+        game: Phaser.Game,
+        key: string,
+        x: number,
+        y: number,
+        pixelRatio: number,
+        controlEngine: IControlEngine,
+        fireRate: number,
+        health: number
+    ) {
+        let trail = this.buildTrail(game, "explosion", x, y);
+        let shootingMachine = this.buildShootingMachine(game, "bullet", "explosion", fireRate);
 
-        return shipSprite;
+        let ship = new Ship(game, x, y, key, 0);
+        ship.configure(pixelRatio, trail, controlEngine, shootingMachine, health);
+
+        return ship;
     }
 
-    public buildShootingMachine(game: Phaser.Game, bulletKey: string, explosionKey: string, bulletSpacingMs: number) {
+    private buildShootingMachine(game: Phaser.Game, bulletKey: string, explosionKey: string, bulletSpacingMs: number) {
         let bullets = this.buildBulletsPool(game, bulletKey);
         let explosions = this.buildBulletExplosionsPool(game, explosionKey);
 
@@ -38,18 +49,6 @@ export class ShipBuilder {
         return bullets;
     }
 
-    public buildTrail(game: Phaser.Game, key: string, shipSprite: Phaser.Sprite) {
-        let trail = game.add.emitter(shipSprite.x - 40, shipSprite.y, 1000);
-        trail.width = 10;
-        trail.makeParticles(key, [1, 2, 3, 4, 5]);
-        trail.setXSpeed(20, -20);
-        trail.setRotation(50, -50);
-        trail.setAlpha(0.4, 0, 800);
-        trail.setScale(0.01, 0.1, 0.01, 0.1, 1000, Phaser.Easing.Quintic.Out);
-
-        return trail;
-    }
-
     private buildBulletExplosionsPool(game: Phaser.Game, explosionKey: string) {
         let explosions = game.add.group();
         explosions.createMultiple(30, explosionKey);
@@ -60,5 +59,17 @@ export class ShipBuilder {
         }, this);
 
         return explosions;
+    }
+
+    private buildTrail(game: Phaser.Game, key: string, x: number, y: number) {
+        let trail = game.add.emitter(x - 40, y, 1000);
+        trail.width = 10;
+        trail.makeParticles(key, [1, 2, 3, 4, 5]);
+        trail.setXSpeed(20, -20);
+        trail.setRotation(50, -50);
+        trail.setAlpha(0.4, 0, 800);
+        trail.setScale(0.01, 0.1, 0.01, 0.1, 1000, Phaser.Easing.Quintic.Out);
+
+        return trail;
     }
 }

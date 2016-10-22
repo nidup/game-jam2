@@ -45,19 +45,16 @@ class SimpleGame {
     }
 
     public update() {
-        this.player.move();
-        this.enemy.move();
-
-        // TODO: reset enemy and bullets positions
-        // TODO: reset enemy does not work propery, only works when enemy following
+        // TODO: reset bullets positions when changing chunk
+        // TODO: reset enemy does not work properly, only works when enemy is following the player
         if (this.generating === false && this.player.getX() > this.configuration.getRightBorder()) {
             this.generating = true;
             this.currentChunk = this.chunkRegistry.getRight(this.currentChunk);
             this.repaintCurrentChunk();
             let playerX = this.configuration.getLeftBorder();
             let enemyX = playerX + (Math.abs(this.enemy.getX()) - Math.abs(this.player.getX()));
-            this.player.reset(playerX, this.player.getY());
-            this.enemy.reset(enemyX, this.enemy.getY());
+            this.player.resetPosition(playerX, this.player.getY());
+            this.enemy.resetPosition(enemyX, this.enemy.getY());
             this.generating = false;
 
         } else if (this.generating === false && this.player.getX() < this.configuration.getLeftBorder()) {
@@ -66,8 +63,8 @@ class SimpleGame {
             this.repaintCurrentChunk();
             let playerX = this.configuration.getRightBorder();
             let enemyX = playerX + (Math.abs(this.enemy.getX()) - Math.abs(this.player.getX()));
-            this.player.reset(playerX, this.player.getY());
-            this.enemy.reset(enemyX, this.enemy.getY());
+            this.player.resetPosition(playerX, this.player.getY());
+            this.enemy.resetPosition(enemyX, this.enemy.getY());
             this.generating = false;
 
         } else if (this.generating === false && this.player.getY() > this.configuration.getBottomBorder()) {
@@ -76,8 +73,8 @@ class SimpleGame {
             this.repaintCurrentChunk();
             let playerY = this.configuration.getTopBorder();
             let enemyY = playerY + (Math.abs(this.enemy.getY()) - Math.abs(this.player.getY()));
-            this.player.reset(this.player.getX(), playerY);
-            this.enemy.reset(this.enemy.getX(), enemyY);
+            this.player.resetPosition(this.player.getX(), playerY);
+            this.enemy.resetPosition(this.enemy.getX(), enemyY);
             this.generating = false;
 
         } else if (this.generating === false && this.player.getY() < this.configuration.getTopBorder()) {
@@ -86,8 +83,8 @@ class SimpleGame {
             this.repaintCurrentChunk();
             let playerY = this.configuration.getBottomBorder();
             let enemyY = playerY + (Math.abs(this.enemy.getY()) - Math.abs(this.player.getY()));
-            this.player.reset(this.player.getX(), playerY);
-            this.enemy.reset(this.enemy.getX(), enemyY);
+            this.player.resetPosition(this.player.getX(), playerY);
+            this.enemy.resetPosition(this.enemy.getX(), enemyY);
             this.generating = false;
         }
 
@@ -97,9 +94,8 @@ class SimpleGame {
     public render() {
         this.game.debug.text(
             "FPS: "  + this.game.time.fps + " "
-            + "Bullets :" + this.player.getBullets().countLiving() + " "
-            + " enemy " + this.enemy.getSprite().health + " "
-            + " hero " + this.player.getSprite().health + " ",
+            + " Player PV " + this.player.health + " "
+            + " Enemy PV " + this.enemy.health + " ",
             2,
             14,
             "#00ff00"
@@ -130,19 +126,6 @@ class SimpleGame {
     }
 
     private buildPlayer() {
-        let shipBuilder = new ShipBuilder();
-
-        let shipSprite = shipBuilder.buildSprite(
-            this.game,
-            "ship1",
-            this.configuration.getMapChunkWidth() / 2,
-            this.configuration.getMapChunkHeight() / 2,
-            this.configuration.getPixelRatio()
-        );
-        this.game.camera.follow(shipSprite);
-
-        let trail = shipBuilder.buildTrail(this.game, "explosion", shipSprite);
-
         let controlEngine = null;
         if (this.configuration.playWithGamePad()) {
             let pad = this.game.input.gamepad.pad1;
@@ -152,29 +135,35 @@ class SimpleGame {
             controlEngine = new KeyboardControlEngine(this.game.input.keyboard);
         }
 
-        let shootingMachine = shipBuilder.buildShootingMachine(this.game, "bullet", "explosion", 200);
+        let shipBuilder = new ShipBuilder();
+        this.player = shipBuilder.buildSprite(
+            this.game,
+            "ship1",
+            this.configuration.getMapChunkWidth() / 2,
+            this.configuration.getMapChunkHeight() / 2,
+            this.configuration.getPixelRatio(),
+            controlEngine,
+            200,
+            300
+        );
 
-        this.player = new Ship(shipSprite, trail, controlEngine, shootingMachine);
+        this.game.camera.follow(this.player);
     }
 
     private buildEnemy() {
+        let controlEngine = new DummyControlEngine();
         let shipBuilder = new ShipBuilder();
-
-        let shipSprite = shipBuilder.buildSprite(
+        this.enemy = shipBuilder.buildSprite(
             this.game,
             "ship2",
             this.configuration.getMapChunkWidth() / 2 + 100,
             this.configuration.getMapChunkHeight() / 2,
-            this.configuration.getPixelRatio()
+            this.configuration.getPixelRatio(),
+            controlEngine,
+            800,
+            50
         );
-
-        let trail = shipBuilder.buildTrail(this.game, "explosion", shipSprite);
-
-        let controlEngine = new DummyControlEngine(this.player, shipSprite);
-
-        let shootingMachine = shipBuilder.buildShootingMachine(this.game, "bullet", "explosion", 800);
-
-        this.enemy = new Ship(shipSprite, trail, controlEngine, shootingMachine);
+        controlEngine.configure(this.player, this.enemy);
     }
 
     private repaintCurrentChunk() {

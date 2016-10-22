@@ -135,30 +135,36 @@ export class GamePadControlEngine  extends AbstractControlEngine {
 export class DummyControlEngine extends AbstractControlEngine {
 
     private player: Ship;
-    private sprite: Phaser.Sprite;
+    private enemy: Ship;
+    private configured: boolean = false;
 
-    public constructor (player: Ship, mySprite: Phaser.Sprite) {
-        super();
+    public configure(player: Ship, enemy: Ship) {
         this.player = player;
-        this.sprite = mySprite;
+        this.enemy = enemy;
+        this.configured = true;
     }
 
     public process() {
 
+        if (this.configured === false) {
+            return;
+        }
+
         // nothing to do in the dummy engine
         if (this.seePlayer() === false) {
             this.acceleration = States.NO_ACCELERATION;
+            this.shooting = States.NO_SHOOTING;
         } else {
 
             // cf http://phaser.io/examples/v2/p2-physics/accelerate-to-object
             // TODO: this is pretty cool but not very compatible with manual controls!
             let speed = 250; // TODO thrust etc
-            let angle = Math.atan2(this.player.getY() - this.sprite.y, this.player.getX() - this.sprite.x);
-            this.sprite.body.rotation = angle + Phaser.Math.degToRad(90);
-            this.sprite.body.force.x = Math.cos(angle) * speed;
-            this.sprite.body.force.y = Math.sin(angle) * speed;
+            let angle = Math.atan2(this.player.getY() - this.enemy.getY(), this.player.getX() - this.enemy.getX());
+            this.enemy.body.rotation = angle + Phaser.Math.degToRad(90);
+            this.enemy.body.force.x = Math.cos(angle) * speed;
+            this.enemy.body.force.y = Math.sin(angle) * speed;
 
-            // this.shooting = States.SHOOTING;
+            this.shooting = States.SHOOTING;
 
             /*
             let distance = this.getDistanceFromPlayer();
@@ -180,13 +186,14 @@ export class DummyControlEngine extends AbstractControlEngine {
 
     private seePlayer() {
         let scope = 500;
-        return (Math.abs(this.player.getX() - this.sprite.x) < scope)
-            && (Math.abs(this.player.getY() - this.sprite.y) < scope);
+        return (Math.abs(this.player.getX() - this.enemy.getX()) < scope)
+            && (Math.abs(this.player.getY() - this.enemy.getY()) < scope)
+            && this.player.alive;
     }
 
     private getDistanceFromPlayer() {
         return Math.sqrt(
-            Math.pow(this.sprite.x - this.player.getX(), 2) + Math.pow(this.sprite.y - this.player.getY(), 2)
+            Math.pow(this.enemy.getX() - this.player.getX(), 2) + Math.pow(this.enemy.getY() - this.player.getY(), 2)
         );
     }
 }
