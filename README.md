@@ -1,8 +1,10 @@
 # Akeneo Game Jam 2
 
-I still don't know what I'll do for the Akeneo Game Jam #2.
+Small endless exploration game rushly developed #uglyCodeAndBugsInside with Typescript + Phaser JS for the Akeneo Game Jam #2.
 
 ![Image of GameJam](doc/game-jam-2.gif)
+
+![Image of GameJam](doc/screenshot.png)
 
 # Demo
 
@@ -51,3 +53,5 @@ Thx @grena for the Game Jam org!
 Thx @wlk for the following boilerplate https://github.com/wlk/phaser-typescript-boilerplate
 
 Thx Daniel Cook for the remastered Art Work of Tyrian http://www.lostgarden.com/2007/04/free-game-graphics-tyrian-ships-and.html
+
+Thx @Chmood for the inspiration for ground map generator and related tileset https://github.com/Chmood/shmup
