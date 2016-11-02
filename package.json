@@ -1,5 +1,5 @@
 {
-  "name": "nidup-game-jam2",
+  "name": "nidup-vasco",
   "version": "1.0.0",
   "description": "Lil' game created with phaser + typescript",
   "main": "index.html",
@@ -9,14 +9,15 @@
   },
   "repository": {
     "type": "git",
-    "url": "https://github.com/nidup/game-jam2"
+    "url": "https://github.com/nidup/vasco"
   },
   "author": "Nicolas <nicolas@akeneo.com>",
   "license": "MIT",
-  "homepage": "https://github.com/nidup/game-jam2",
+  "homepage": "https://github.com/nidup/vasco",
   "devDependencies": {
     "webpack": "^1.12.12",
-    "webpack-dev-server": "^1.14.1"
+    "webpack-dev-server": "^1.14.1",
+    "typescript": "2.0.3"
   },
   "dependencies": {
     "ts-loader": "^0.8.2"

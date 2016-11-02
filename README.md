@@ -22,14 +22,7 @@ You need to have `node` and `npm` installed
 
 ### Dependencies
 
-You need to have typescript installed (globally or not):
-```
-npm install -g typescript
-npm install -g tslint
-npm install -g webpack
-```
-
-Then inside the project directory run:
+To install dependencies, run:
 ```
 npm install
 ```
