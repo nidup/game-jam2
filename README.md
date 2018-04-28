@@ -8,7 +8,7 @@ Small endless exploration game rushly developed #uglyCodeAndBugsInside with Type
 
 # Demo
 
-You can access to the demo here https://nidup.github.io/vasco/
+You can [play the demo here](https://nidup.itch.io/vasco)
 
 The state of the project is more a POC regarding map generation than a playable game.
 
